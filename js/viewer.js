@@ -105,7 +105,7 @@ export class Viewer {
     this.scene.add(this.shadow);
 
     this.finger = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 48, 1),
-      new THREE.MeshStandardMaterial({ color: 0x24403a, roughness: 0.95, metalness: 0, envMapIntensity: 0.5 }));
+      new THREE.MeshStandardMaterial({ color: 0x122722, roughness: 1, metalness: 0, envMapIntensity: 0.3 }));
     this.finger.rotation.x = Math.PI / 2;
     this.finger.visible = false;
     this.scene.add(this.finger);
