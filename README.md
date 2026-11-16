@@ -11,12 +11,13 @@ live in 3D betrachtet, sammelt, stapelt und für den 3D-Druck exportiert.
   - Schiene: Verlauf (gerade, Welle, Zickzack, V-Spitze), Verschluss (geschlossen, offen, Spirale/Bypass; Enden rund, gerade, Kugel, spitz), Kantenform (gerade, Bogenkante, Krone), Drehung des Querschnitts
   - 16 Querschnitte: Halbrund, Bombiert, Linse, Flach, Kissen, Rund, Messerkante, Fase, Pult, Hohlkehle, Randprofil, Stufe, Mittelwulst, Doppelwulst, Randwülste, Dreiwulst
   - 17 Strukturen: Rillen, Kanneluren, Rippen, Schrägrillen, Guilloche, Mäander, Stufenmäander, Stufenband, Perlrand, Gehämmert, Rinde, Punzen, Pyramiden, Schuppen, Kordel, Rändel, Kugeln – wahlweise auf ganzer Fläche, nur mittig oder nur an den Rändern
+  - Glassteine zum Einkleben: 8 Steinformen in handelsüblichen Maßen, drei Schliffe (spitz, flache Rückseite, Cabochon), 14 Farben; Anordnung als Solitär, Trio, Reihe oder rundum; Fassungen eingelassen, Zarge oder Kelch – die Sitze werden mitgedruckt
   - Gravur/Prägung: außen (vertieft oder erhaben), innen, Initialen auf der Siegelplatte
   - 21 Werkstoffe (Gold-, Silber-, Platintöne, Titan, Stahl, Wolfram, Bronze, Messing, Kupfer, Eisen, Keramik, Kunstharz), drei Oberflächen, einstellbare Deckkraft, Zweitmetall (Mittelstreifen, Ränder, längs geteilt, innen, Kopf)
   - Anzeige von Innendurchmesser, US-Größe, Volumen und Gewicht im gewählten Material
 - **Galerie** – gespeicherte Ringe mit Vorschaubild; bearbeiten, duplizieren, löschen, exportieren, importieren.
 - **Stapel** – mehrere Ringe zusammen auf einem Ringstab oder nebeneinander. V- und Wellenringe schmiegen sich ineinander.
-- **Stilbuch** – 30 Ringformen, Techniken und Ornamente historisch eingeordnet (Herkunft, Grund der Form, Stand, heutige Verwendung), jede als Vorlage zu öffnen.
+- **Stilbuch** – 35 Ringformen, Techniken, Ornamente und Fassungen historisch eingeordnet (Herkunft, Grund der Form, Stand, heutige Verwendung), jede als Vorlage zu öffnen.
 - **Export** – STL für den 3D-Druck (Millimeter, geschlossener Körper, liegt flach auf dem Druckbett), Ring-Datei (`.ring.json`) zum Weitergeben und Sichern, PNG-Bild.
 
 Alle Daten bleiben auf dem Gerät. Es gibt kein Konto, keinen Server und keine Übertragung.
@@ -53,6 +54,7 @@ Es gibt keinen Build-Schritt und keine Abhängigkeiten außer der mitgelieferten
 | `js/ring.js` | Parametrische Geometrie: aus den Einstellungen wird ein geschlossenes Dreiecksnetz |
 | `js/viewer.js` | 3D-Bühne (three.js), Materialien, Stapel-Anordnung, Vorschaubilder |
 | `js/text.js` | Gravurtext als Höhenkarte |
+| `js/gems.js` | Glassteine für die Darstellung |
 | `js/catalog.js` | Listen der Formen, Profile, Muster, Materialien |
 | `js/handbook.js` | Texte und Vorlagen des Stilbuchs |
 | `js/store.js` | Lokales Speichern, Import, Export (STL, Ring-Datei) |

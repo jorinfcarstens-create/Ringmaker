@@ -4,16 +4,14 @@ import { OrbitControls } from './vendor/OrbitControls.js';
 import { buildRing, normalize, ringExtents, EXTENT_STEPS } from './ring.js';
 import { MATERIALS, FINISHES } from './catalog.js';
 import { textMaps } from './text.js';
+import { gemGeometry, gemMaterial } from './gems.js';
 
 // ----------------------------------------------------- Studio-Umgebung
 // Ein helles Lichtzelt mit dunklen Akzenten – so wirkt poliertes Metall
 // plastisch statt flach.
 function buildStudio() {
   const scene = new THREE.Scene();
-  const box = new THREE.Mesh(
-    new THREE.BoxGeometry(20, 12, 20),
-    new THREE.MeshBasicMaterial({ color: 0x8e9096, side: THREE.BackSide }));
-  scene.add(box);
+  scene.add(new THREE.Mesh(new THREE.BoxGeometry(20, 12, 20), new THREE.MeshBasicMaterial({ color: 0x8e9096, side: THREE.BackSide })));
   const panel = (w, h, color, intensity, pos, rot) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h),
       new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(intensity), side: THREE.DoubleSide }));
@@ -45,6 +43,24 @@ function shadowTexture() {
   return new THREE.CanvasTexture(c);
 }
 
+// Der Hintergrund wird mitgerendert (undurchsichtige Zeichenfläche ist
+// auf dem Handy deutlich schneller als eine durchscheinende).
+function backdropTexture(el) {
+  const cs = getComputedStyle(el);
+  const a = cs.getPropertyValue('--stage-a').trim() || '#333a66', b = cs.getPropertyValue('--stage-b').trim() || '#090b15';
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = b; g.fillRect(0, 0, 256, 256);
+  g.translate(128, 92); g.scale(1.2, 0.9);
+  const grad = g.createRadialGradient(0, 0, 0, 0, 0, 256);
+  grad.addColorStop(0, a); grad.addColorStop(0.76, b);
+  g.fillStyle = grad; g.fillRect(-256, -256, 512, 512);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 export function makeMaterial(p, twoTone = false) {
   const m = MATERIALS[p.material] || MATERIALS.gold;
   const f = FINISHES[p.finish] || FINISHES.polished;
@@ -63,7 +79,8 @@ export function makeMaterial(p, twoTone = false) {
   });
 }
 
-export function ringGeometry(params, quality) {
+// Ein Ring samt Steinen als fertiges Objekt
+export function ringObject(params, quality) {
   const p = normalize(params);
   const built = buildRing(p, { quality, maps: textMaps(p) });
   const geo = new THREE.BufferGeometry();
@@ -80,8 +97,15 @@ export function ringGeometry(params, quality) {
     geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   }
   geo.computeVertexNormals();
-  geo.computeBoundingSphere();
-  return { geo, built, twoTone: !!built.zone };
+  const mesh = new THREE.Mesh(geo, makeMaterial(p, !!built.zone));
+  for (const st of built.stones) {
+    const gem = new THREE.Mesh(gemGeometry(p.stoneShape, st.hu, st.hv, p.stoneTurn, p.stoneCut), gemMaterial(p.stoneColor, p.stoneCut));
+    gem.position.set(...st.pos);
+    gem.rotation.z = -st.a; // „oben“ des Steins zeigt vom Finger weg
+    gem.userData.shared = true;
+    mesh.add(gem);
+  }
+  return { mesh, built, p };
 }
 
 // Abstand, den Ring B hinter Ring A braucht, damit beide sich berühren,
@@ -95,16 +119,17 @@ function nestOffset(a, b) {
 export class Viewer {
   constructor(container) {
     this.container = container;
-    const r = this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: false });
-    r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.5));
+    const r = this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+    r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     r.toneMapping = THREE.ACESFilmicToneMapping;
     r.toneMappingExposure = 1.0;
-    container.appendChild(r.domElement);
+    container.prepend(r.domElement);
 
     this.scene = new THREE.Scene();
     const pm = new THREE.PMREMGenerator(r);
-    this.scene.environment = pm.fromScene(buildStudio(), 0.035).texture;
+    this.env = this.scene.environment = pm.fromScene(buildStudio(), 0.035).texture;
     pm.dispose();
+    this.refreshBackdrop();
 
     this.camera = new THREE.PerspectiveCamera(30, 1, 1, 2000);
     this.group = new THREE.Group();
@@ -120,21 +145,35 @@ export class Viewer {
     this.finger.rotation.x = Math.PI / 2;
     this.finger.visible = false;
     this.scene.add(this.finger);
-    
 
     const c = this.controls = new OrbitControls(this.camera, r.domElement);
-    c.enablePan = false; c.enableDamping = true; c.dampingFactor = 0.08;
+    c.enablePan = false; c.enableDamping = true; c.dampingFactor = 0.12;
     c.rotateSpeed = 0.9; c.autoRotateSpeed = 1.6;
-    c.addEventListener('start', () => { c.autoRotate = false; this.wake(); });
+    c.addEventListener('start', () => { c.autoRotate = false; this.onUserStart && this.onUserStart(); this.wake(); });
     c.addEventListener('change', () => this.wake());
 
     this.meshes = [];
     this.radius = 15;
+    this.insetTop = 0; this.insetBottom = 0;
     this._frames = 0;
     this._loop = this._loop.bind(this);
     new ResizeObserver(() => this.resize()).observe(container);
     this.resize();
     this.resetCamera();
+  }
+
+  refreshBackdrop() {
+    if (this.scene.background) this.scene.background.dispose();
+    this.scene.background = backdropTexture(this.container);
+    if (this.controls) this.wake(2);
+  }
+
+  // Bereiche oben/unten, die von Bedienelementen belegt sind (in Pixeln).
+  // Der Ring wird im freien Bereich dazwischen eingepasst und zentriert.
+  setInsets(top, bottom) {
+    if (Math.abs(top - this.insetTop) < 1 && Math.abs(bottom - this.insetBottom) < 1) return;
+    this.insetTop = top; this.insetBottom = bottom;
+    this.resize();
   }
 
   resize() {
@@ -143,12 +182,17 @@ export class Viewer {
     this.renderer.setSize(w, h, false);
     this.renderer.domElement.style.width = w + 'px';
     this.renderer.domElement.style.height = h + 'px';
+    this._w = w; this._h = h;
     this.camera.aspect = w / h;
+    const shift = (this.insetTop - this.insetBottom) / 2;
+    if (Math.abs(shift) > 0.5) this.camera.setViewOffset(w, h, 0, -shift, w, h); else this.camera.clearViewOffset();
+    const dist0 = this._dist;
     this._fit();
+    if (dist0 && this.camera.position.lengthSq() > 0) this.camera.position.setLength(this.camera.position.length() * this._dist / dist0);
     this.wake();
   }
 
-  wake(frames = 24) {
+  wake(frames = 20) {
     this._frames = Math.max(this._frames, frames);
     if (!this._raf) this._raf = requestAnimationFrame(this._loop);
   }
@@ -164,9 +208,12 @@ export class Viewer {
   setAutoRotate(on) { this.controls.autoRotate = on; this.wake(); }
 
   _fit() {
+    const h = this._h || 1, w = this._w || 1;
+    const free = Math.max(0.35, (h - this.insetTop - this.insetBottom) / h);
     const fov = this.camera.fov * Math.PI / 180;
-    const hfov = 2 * Math.atan(Math.tan(fov / 2) * this.camera.aspect);
-    const dist = this.radius / Math.sin(Math.min(fov, hfov) / 2) * 1.08;
+    const vHalf = Math.atan(Math.tan(fov / 2) * free);              // halber Winkel des freien Bereichs
+    const hHalf = Math.atan(Math.tan(fov / 2) * (w / h));
+    const dist = this.radius / Math.sin(Math.min(vHalf, hHalf)) * 1.06;
     this.controls.minDistance = dist * 0.35;
     this.controls.maxDistance = dist * 2.2;
     this._dist = dist;
@@ -175,22 +222,21 @@ export class Viewer {
 
   resetCamera(dir = [0.55, 0.42, 1]) {
     this._fit();
-    const v = new THREE.Vector3(...dir).normalize().multiplyScalar(this._dist);
-    this.camera.position.copy(v);
+    this.camera.position.copy(new THREE.Vector3(...dir).normalize().multiplyScalar(this._dist));
     this.controls.target.set(0, 0, 0);
     this.controls.update();
     this.wake();
   }
 
+  _dispose(m) { m.geometry.dispose(); m.material.dispose(); }
   _clear() {
-    for (const m of this.meshes) { this.group.remove(m); m.geometry.dispose(); m.material.dispose(); }
+    for (const m of this.meshes) { this.group.remove(m); this._dispose(m); }
     this.meshes = [];
   }
 
   _frameScene(refit) {
     const box = new THREE.Box3().setFromObject(this.group);
-    const sphere = box.getBoundingSphere(new THREE.Sphere());
-    const newR = Math.max(8, sphere.radius);
+    const newR = Math.max(8, box.getBoundingSphere(new THREE.Sphere()).radius);
     this.shadow.position.set(0, box.min.y - 1.2, (box.min.z + box.max.z) / 2);
     this.shadow.scale.set((box.max.x - box.min.x) * 1.5, (box.max.z - box.min.z) * 1.4 + 14, 1);
     if (refit || Math.abs(newR - this.radius) / this.radius > 0.18) {
@@ -203,38 +249,29 @@ export class Viewer {
   }
 
   // Ein einzelner Ring (Werkbank). Liefert die Kennzahlen zurück.
-  setRing(params, { refit = false } = {}) {
-    const p = normalize(params);
-    const { geo, built, twoTone } = ringGeometry(p, 'preview');
-    if (this.meshes.length === 1) {
-      const m = this.meshes[0];
-      m.geometry.dispose(); m.geometry = geo;
-      m.material.dispose(); m.material = makeMaterial(p, twoTone);
-    } else {
-      this._clear();
-      const m = new THREE.Mesh(geo, makeMaterial(p, twoTone));
-      this.group.add(m); this.meshes.push(m);
-    }
-    this.meshes[0].position.set(0, 0, 0);
+  // quality 'light' während des Ziehens an Reglern, sonst 'preview'.
+  setRing(params, { refit = false, quality = 'preview' } = {}) {
+    const { mesh, built } = ringObject(params, quality);
+    this._clear();
+    this.group.add(mesh); this.meshes.push(mesh);
     this.finger.visible = false;
+    this.shadow.visible = true;
     this._frameScene(refit);
-    return built.stats;
+    return { ...built.stats, stones: built.stones };
   }
 
-  // Mehrere Ringe: 'stack' = auf einem Finger, 'row' = nebeneinander.
+  // Mehrere Ringe: 'stack' = auf einem Stab, 'row' = nebeneinander.
   setRings(list, { mode = 'stack', finger = false } = {}) {
     this._clear();
     if (!list.length) { this.finger.visible = false; this.shadow.visible = false; this.wake(); return { length: 0 }; }
     this.shadow.visible = true;
-    let z = 0, x = 0, prev = null, first = 0, last = 0, maxIn = 0;
+    let z = 0, x = 0, prev = null, first = 0, last = 0;
     list.forEach((params, i) => {
-      const p = normalize(params);
-      const { geo, built, twoTone } = ringGeometry(p, list.length > 1 ? 'light' : 'preview');
-      const mesh = new THREE.Mesh(geo, makeMaterial(p, twoTone));
+      const { mesh, built, p } = ringObject(params, list.length > 1 ? 'light' : 'preview');
       let ext = ringExtents(p);
       if (params._flip) {
         mesh.rotation.y = Math.PI;
-        ext = { lo: ext.hi.map((v) => -v), hi: ext.lo.map((v) => -v), min: ext.min, max: ext.max };
+        ext = { lo: ext.hi.map((v) => -v), hi: ext.lo.map((v) => -v), min: -ext.max, max: -ext.min };
       }
       const r = built.stats.outerDiameter / 2;
       if (mode === 'row') {
@@ -245,13 +282,11 @@ export class Viewer {
         if (prev) z += nestOffset(prev, ext) + 0.05;
         mesh.position.z = z;
         prev = ext;
-        if (i === 0) first = z + (params._flip ? -ext.max : ext.min);
-        last = z + (params._flip ? -ext.min : ext.max);
-        maxIn = Math.max(maxIn, built.stats.innerDiameter / 2);
+        if (i === 0) first = z + ext.min;
+        last = z + ext.max;
       }
       this.group.add(mesh); this.meshes.push(mesh);
     });
-    // zentrieren
     const box = new THREE.Box3().setFromObject(this.group);
     const c = box.getCenter(new THREE.Vector3());
     for (const m of this.meshes) { m.position.x -= c.x; m.position.z -= c.z; if (mode === 'row') m.position.y -= c.y; }
@@ -267,20 +302,21 @@ export class Viewer {
 
   // Vorschaubild mit fester Perspektive (für Galerie und Stilbuch).
   snapshot(params, size = 320) {
-    const p = normalize({ ...params, opacity: 1 });
-    const { geo, built, twoTone } = ringGeometry(p, 'preview');
-    const mesh = new THREE.Mesh(geo, makeMaterial(p, twoTone));
+    const { mesh, built } = ringObject({ ...params, opacity: 1 }, 'preview');
     const scene = new THREE.Scene();
-    scene.environment = this.scene.environment;
+    scene.environment = this.env;
     scene.add(mesh);
-    const R = Math.max(built.stats.outerDiameter / 2, built.stats.axialWidth / 2) * 1.12;
+    const box = new THREE.Box3().setFromObject(mesh);
+    const R = Math.max(box.getBoundingSphere(new THREE.Sphere()).radius * 0.86, built.stats.outerDiameter / 2 * 1.12);
     const sh = this.shadow.clone();
-    sh.position.set(0, -built.stats.outerDiameter / 2 - 1, 0);
+    sh.visible = true;
+    sh.position.set(0, box.min.y - 1, 0);
     sh.scale.set(R * 3, R * 2.2, 1);
     scene.add(sh);
     const cam = new THREE.PerspectiveCamera(26, 1, 1, 1000);
-    cam.position.copy(new THREE.Vector3(0.62, 0.5, 1).normalize().multiplyScalar(R / Math.sin(13 * Math.PI / 180) * 1.02));
-    cam.lookAt(0, -R * 0.04, 0);
+    const mid = (box.max.y + box.min.y) / 2;
+    cam.position.copy(new THREE.Vector3(0.62, 0.5, 1).normalize().multiplyScalar(R / Math.sin(13 * Math.PI / 180) * 1.02)).add(new THREE.Vector3(0, mid, 0));
+    cam.lookAt(0, mid - R * 0.04, 0);
     const rt = new THREE.WebGLRenderTarget(size, size, { samples: 4, colorSpace: THREE.SRGBColorSpace });
     const r = this.renderer;
     r.setRenderTarget(rt);
@@ -290,14 +326,12 @@ export class Viewer {
     const buf = new Uint8Array(size * size * 4);
     r.readRenderTargetPixels(rt, 0, 0, size, size, buf);
     r.setRenderTarget(null);
-    rt.dispose(); geo.dispose(); mesh.material.dispose();
+    rt.dispose(); this._dispose(mesh);
     const cv = document.createElement('canvas');
     cv.width = cv.height = size;
     const ctx = cv.getContext('2d');
     const img = ctx.createImageData(size, size);
-    for (let y = 0; y < size; y++) {
-      img.data.set(buf.subarray((size - 1 - y) * size * 4, (size - y) * size * 4), y * size * 4);
-    }
+    for (let y = 0; y < size; y++) img.data.set(buf.subarray((size - 1 - y) * size * 4, (size - y) * size * 4), y * size * 4);
     ctx.putImageData(img, 0, 0);
     this.wake(2);
     return cv.toDataURL('image/png');

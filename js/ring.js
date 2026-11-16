@@ -74,6 +74,21 @@ export const DEFAULTS = {
   inlay: 'none',         // none | center | edges | half | inside | head
   inlayWidth: 0.4,
   material2: 'silver',
+
+  stones: 'none',        // none | solo | trio | row | around
+  stoneShape: 'round',   // round | oval | octagon | square | cushion | baguette | pear | marquise
+  stoneL: 4,             // Länge (mm), bei runden Steinen der Durchmesser
+  stoneW: 4,             // Breite (mm)
+  stoneCut: 'point',     // point = facettiert mit Spitze | flat = facettiert, flache Rückseite | cab = Cabochon
+  stoneColor: 'crystal',
+  stoneTurn: false,      // lange Achse quer zum Finger
+  stoneCount: 5,         // Reihe
+  stoneGap: 0.6,         // Abstand zwischen Steinen
+  setting: 'bezel',      // flush = eingelassen | bezel = Zarge | cone = Kelch
+  collar: 1.2,           // Höhe der Fassung über der Schiene
+  wall: 0.8,             // Wandstärke der Fassung
+  shoulder: 3,           // Auslauf des Kelchs
+  clearance: 0.1,        // Spiel zwischen Stein und Sitz
 };
 
 export function normalize(p) {
@@ -99,6 +114,11 @@ export function normalize(p) {
   num('patternDepth', 0.02, 0.8); num('patternCount', 1, 24); num('patternScale', 0.4, 2.5);
   num('textSize', 0.25, 0.95); num('textDepth', 0.05, 0.6); num('opacity', 0.15, 1);
   num('inlayWidth', 0.1, 0.9);
+  num('stoneL', 1, 30); num('stoneW', 1, 30); num('stoneCount', 2, 15); num('stoneGap', 0, 6);
+  num('collar', 0, 5); num('wall', 0.4, 2); num('shoulder', 0.5, 10); num('clearance', 0, 0.4);
+  o.stoneCount = Math.round(o.stoneCount);
+  if (o.stoneW > o.stoneL) [o.stoneL, o.stoneW] = [o.stoneW, o.stoneL];
+  if (['round', 'square', 'cushion'].includes(o.stoneShape)) o.stoneW = o.stoneL;
   for (const k of ['waveCount', 'patternCount', 'outlineSides', 'contourCount', 'twist']) o[k] = Math.round(o[k]);
   if (o.closure === 'spiral') o.form = 'band';
   return o;
@@ -248,6 +268,73 @@ const BETA_E = 2.4;   // sorgt für weichen Auslauf der Schultern
 const dome = (q, m) => Math.pow(Math.max(0, 1 - Math.pow(Math.abs(q), m)), DOME_E);
 const tri = (x) => { const f = x - Math.floor(x); return f < 0.5 ? 2 * f : 2 - 2 * f; }; // 0..1..0
 
+// ---------------------------------------------------------------- Steine
+// Umrissmaß eines Steins: 1 auf der Rundiste, <1 innen, >1 außen.
+// l = Koordinate entlang der langen Achse, w = quer dazu; hl/hw = halbe Maße.
+const PEAR = (t) => Math.pow(Math.max(0, 1 - t), 0.6) * Math.pow(Math.max(0, 1 + t), 0.5);
+export function stoneRho(shape, l, w, hl, hw) {
+  const a = Math.abs(l) / hl, b = Math.abs(w) / hw;
+  switch (shape) {
+    case 'octagon': return Math.max(a, b, (a + b) / 1.72);
+    case 'square': return Math.pow(Math.pow(a, 10) + Math.pow(b, 10), 0.1);
+    case 'baguette': return Math.pow(Math.pow(a, 12) + Math.pow(b, 12), 1 / 12);
+    case 'cushion': return Math.pow(Math.pow(a, 4) + Math.pow(b, 4), 0.25);
+    case 'marquise': return (b + Math.sqrt(b * b + 4 * a * a)) / 2;
+    case 'pear': {
+      let lo = Math.max(a, 1e-6), hi = Math.max(a, b) * 2.2 + 1e-6; // Maßstab k mit b/k = PEAR(l/(k·hl))
+      for (let i = 0; i < 14; i++) {
+        const k = (lo + hi) / 2;
+        if (b / k > PEAR(l / hl / k)) lo = k; else hi = k;
+      }
+      return hi;
+    }
+    default: return Math.sqrt(a * a + b * b);
+  }
+}
+const BOXY = { octagon: 3.2, square: 6, baguette: 8, cushion: 3.4 };
+
+// Sitztiefe unter der Oberkante der Fassung
+function seatDepth(cut, wmin) {
+  if (cut === 'point') return 0.15 + 0.43 * wmin;     // Kegel für die Steinspitze
+  if (cut === 'flat') return Math.max(0.4, 0.14 * wmin);
+  return Math.max(0.5, 0.1 * wmin);                     // Cabochon
+}
+
+function placeSites(p, d) {
+  d.sites = [];
+  if (p.stones === 'none' || d.spiral || d.twist) return;
+  const hl = p.stoneL / 2, hw = p.stoneW / 2;
+  const hu0 = p.stoneTurn ? hl : hw, hv0 = p.stoneTurn ? hw : hl; // u = quer zum Finger (Umlauf), v = längs
+  const Rref = d.siteRef = d.Rin + d.tb;
+  const collar = p.setting === 'flush' ? 0 : p.collar;
+  const skirt = p.setting === 'cone' ? p.shoulder : p.setting === 'bezel' ? 0.35 : 0.3;
+  const list = [];
+  const pitch = (k1, k2) => (hu0 * k1 + hu0 * k2 + Math.max(p.stoneGap, p.setting === 'flush' ? 0.3 : 2 * p.wall * 0.6) + 2 * p.clearance) / Rref;
+  if (p.stones === 'solo') list.push([0, 1]);
+  else if (p.stones === 'trio') { const k = 0.62, da = pitch(1, k); list.push([-da, k], [0, 1], [da, k]); }
+  else if (p.stones === 'row') { const da = pitch(1, 1), n = p.stoneCount; for (let i = 0; i < n; i++) list.push([(i - (n - 1) / 2) * da, 1]); }
+  else if (p.stones === 'around') { const n = Math.max(3, Math.floor(TAU / pitch(1, 1))); for (let i = 0; i < n; i++) list.push([-Math.PI + (i + 0.5) * TAU / n, 1]); }
+  const c = newCol(), po = [0, 0];
+  for (const [a, k] of list) {
+    if (Math.abs(a) > Math.PI) continue;
+    colAt(p, d, (a + Math.PI) / TAU, c);
+    profileAt(p.profile, 0, c.w, c.t, p.crown, p.edge, po);
+    let o = po[0];
+    if (c.beta > 0) o = (1 - c.beta) * o + c.beta * d.Tpeak;
+    let nat = d.Rin + o;
+    if (d.table && Math.cos(a) > 0) nat = Math.min(nat, d.H / Math.cos(a));
+    const hu = hu0 * k, hv = hv0 * k, wmin = Math.min(hu, hv) * 2;
+    const depth = seatDepth(p.stoneCut, wmin);
+    const floorN = d.Rin + 0.8;
+    const Hc = Math.max(nat + collar, floorN + depth);
+    d.sites.push({
+      a, sin: Math.sin(a), cos: Math.cos(a), zs: c.x0, hu, hv, rm: Math.min(hu, hv), Hc, depth, floorN,
+      rise: Hc - nat, skirt: Math.max(skirt, 0.55 * (Hc - nat + 0.5)), skirtV: Math.max(0.4, 0.55 * (Hc - nat + 0.5)), foot: p.clearance + p.wall + 0.75 + 1.0 * (Hc - nat), flare: p.setting === 'cone' ? skirt * 1.1 : 0,
+      reach: hu + p.clearance + p.wall + Math.max(skirt, 0.55 * (Hc - nat + 0.5)) * 1.8, reachV: hv + p.clearance + p.wall + 0.8 + 1.1 * (Hc - nat),
+    });
+  }
+}
+
 function derive(p) {
   const Rin = innerRadius(p);
   const wb = p.width / 2, tb = p.thickness;
@@ -289,7 +376,7 @@ function derive(p) {
     d.pitch = p.width + p.spiralPitch;
   } else if (d.open) {
     const g = Math.min(p.gap / Rmid, 2.2);
-    const center = p.form === 'band' ? 0 : Math.PI;
+    const center = p.form === 'band' && p.stones === 'none' ? 0 : Math.PI;
     d.span = TAU - g;
     d.th0 = center + g / 2;
   }
@@ -297,6 +384,8 @@ function derive(p) {
   d.endR = Math.max(wb, tb / 2);
   d.twist = d.head ? 0 : p.twist;
   d.lift = d.twist ? Math.max(0, Math.hypot(wb, tb / 2) - tb / 2) : 0;
+  d.sites = [];
+  placeSites(p, d);
   return d;
 }
 
@@ -313,6 +402,16 @@ function colAt(p, d, tt, c) {
   } else if (d.head) {
     if (aa < SHOULDER) beta = Math.pow(1 - Math.pow(aa / SHOULDER, d.e1), BETA_E);
     w = d.wb + (d.Wtop - d.wb) * Math.pow(beta, 0.85);
+  }
+  for (let i = 0; i < d.sites.length; i++) { // Schiene trägt die Fassung: bei Bedarf verbreitern
+    const st = d.sites[i];
+    let da = a - st.a; da -= TAU * Math.round(da / TAU);
+    const su = Math.abs(da) * d.siteRef, ext = st.hu + st.foot + st.flare;
+    if (su < ext) {
+      const n = st.flare ? 2 : (BOXY[p.stoneShape] || 2);
+      const z = (st.hv + st.foot) * Math.pow(1 - Math.pow(su / ext, n), 1 / n) + 0.12;
+      w = 0.5 * (w + z + Math.sqrt((w - z) * (w - z) + 0.03));
+    }
   }
   const calm = 1 - beta; // am Kopf laufen Verlauf und Kantenform aus
   if (p.path === 'wave') x0 = p.waveAmp * Math.cos(p.waveCount * theta) * calm;
@@ -431,7 +530,7 @@ function motif(m, u, v) { // u in Kachelbreiten (endlos), v in 0..1 über die Ba
 
 const FINE = ['meander', 'fret', 'steps', 'milgrain', 'hammered', 'rope', 'knurl', 'dots', 'pyramids', 'bark', 'scales', 'ribs', 'waves', 'diagonal'];
 export function needsDetail(p) {
-  return FINE.includes(p.pattern) || p.twist > 0 || p.contour !== 'none' ||
+  return FINE.includes(p.pattern) || p.twist > 0 || p.contour !== 'none' || p.stones !== 'none' ||
     !!(p.textOuter || p.textInner || (p.textTable && p.form === 'signet'));
 }
 
@@ -458,7 +557,9 @@ export function buildRing(p0, opts = {}) {
 
   const { Rin, wb, tb } = d;
   const Cout = TAU * (Rin + tb);
-  const warp = d.head ? (hasTableText ? 0.72 : 0.55) : 0;
+  const topStones = d.sites.length > 0 && d.sites.every((st) => Math.abs(st.a) < 1);
+  const warp = d.head || topStones ? (hasTableText || topStones ? 0.72 : 0.55) : 0;
+  const sites = d.sites, stoneShape = p.stoneShape, turn = p.stoneTurn, clr = p.clearance, wallT = p.wall, pointCut = p.stoneCut === 'point';
 
   const pos = new Float32Array(nVert * 3);
   const zone = new Uint8Array(nVert); // 1 = Zweitmetall
@@ -487,7 +588,7 @@ export function buildRing(p0, opts = {}) {
   const inlay = p.inlay, iw = p.inlayWidth;
 
   let minWall = Infinity, maxR = 0, zLo = Infinity, zHi = -Infinity;
-  const po = [0, 0], col = newCol();
+  const po = [0, 0], col = newCol(), colSites = [];
 
   // Verteilung der Profilpunkte (an den Kanten dichter)
   const qs = new Float32Array(nO), qi = new Float32Array(nI);
@@ -534,6 +635,11 @@ export function buildRing(p0, opts = {}) {
       poly = Math.min(1 / Math.cos(l) - 1, polyMax * (1 - 0.7 * p.outlineSoft)) * (Rin + tb) * fade;
     }
     const cH = t / 2;
+    colSites.length = 0;
+    for (let si = 0; si < sites.length; si++) {
+      let da = a - sites[si].a; da -= TAU * Math.round(da / TAU);
+      if (Math.abs(da) * (Rin + tb) < sites[si].reach + 1.5 && Math.abs(da) < 1.2) colSites.push(sites[si]);
+    }
     const phi = d.twist ? d.twist * theta : 0;
     const cosP = Math.cos(phi), sinP = Math.sin(phi);
     const shaped = e !== 1 || d.twist;
@@ -560,12 +666,37 @@ export function buildRing(p0, opts = {}) {
         x = dx; h = cH + d.lift + dh;
       }
       const r = Rin + h;
-      const X = r * sinA;
-      let Y = r * cosA;
+      let X = r * sinA, Y = r * cosA;
       const k = iu * nV + j;
       if (kind !== 2 && d.table && cosA > 0 && Y > d.H) {
         Y = d.H;
         if (hasTableText) Y -= tdIn * sampleMap(maps.table, 0.5 + X / tabW, 0.5 + x / tabH);
+      }
+      if (kind === 0) for (let si = 0; si < colSites.length; si++) {
+        const st = colSites[si];
+        const u = X * st.cos - Y * st.sin, v = x0 + x - st.zs;
+        if (Math.abs(u) > st.reach || Math.abs(v) > st.reachV) continue;
+        const rho = turn ? stoneRho(stoneShape, u, v, st.hu, st.hv) : stoneRho(stoneShape, v, u, st.hv, st.hu);
+        const ex = (rho - 1) * st.rm;
+        if (ex > clr + wallT + st.skirt * 1.8) continue;
+        const n0 = X * st.sin + Y * st.cos;
+        let n1;
+        if (ex <= clr) {
+          const dep = pointCut ? 0.15 + (st.depth - 0.15) * Math.max(0, 1 - rho) : st.depth;
+          n1 = Math.max(st.floorN, st.Hc - dep * sm((clr - ex) / 0.14));
+          if (n1 - Rin < minWall) minWall = n1 - Rin;
+        } else if (ex <= clr + wallT) n1 = st.Hc;
+        else { // Auslauf: seitlich steil, in Umlaufrichtung als Schulter
+          const dist = ex - clr - wallT;
+          const cu = (u * u) / (u * u + v * v + 1e-6);
+          const L = st.skirtV + (st.skirt - st.skirtV) * cu * cu * (3 - 2 * cu);
+          if (dist > L * 1.8) continue;
+          const cone = st.Hc - (st.rise + 0.5) / L * dist;
+          const mx = 0.5 * (n0 + cone + Math.sqrt((n0 - cone) * (n0 - cone) + 0.12));
+          n1 = n0 + (mx - n0) * (1 - sm((dist - L * 1.3) / (L * 0.5)));
+        }
+        X += st.sin * (n1 - n0); Y += st.cos * (n1 - n0);
+        break;
       }
       pos[k * 3] = X; pos[k * 3 + 1] = Y; pos[k * 3 + 2] = x0 + x;
       const rr = X * X + Y * Y;
@@ -709,6 +840,11 @@ export function buildRing(p0, opts = {}) {
 
   return {
     positions: pos, indices: idx, zone: inlay !== 'none' ? zone : null, nU, nV,
+    // Steine für die Darstellung (nicht Teil der Druckdatei)
+    stones: sites.map((st) => {
+      const y = pointCut ? st.Hc - 0.15 : st.Hc - st.depth;
+      return { pos: [st.sin * y, st.cos * y, st.zs], a: st.a, hu: st.hu, hv: st.hv, rise: st.rise };
+    }),
     stats: {
       innerDiameter: 2 * Rin,
       outerDiameter: 2 * Math.sqrt(maxR),

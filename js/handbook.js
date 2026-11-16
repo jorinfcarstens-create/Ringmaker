@@ -110,6 +110,18 @@ export const STYLES = [
     ],
   },
   {
+    id: 'zarge', era: 'antike', title: 'Die Zargenfassung', when: 'seit dem 3. Jahrtausend v. Chr.',
+    stand: 'Wer sich Steine leisten konnte – in der Antike die Oberschicht',
+    lead: 'Ein Metallrand umschließt den Stein ringsum: die älteste und sicherste Art, einen Stein zu fassen.',
+    preset: { form: 'band', profile: 'd', width: 3, thickness: 1.7, stones: 'solo', stoneShape: 'oval', stoneL: 8, stoneW: 6, stoneCut: 'cab', stoneColor: 'ruby', setting: 'bezel', collar: 1.4, wall: 0.8, material: 'gold999' },
+    sections: [
+      ['Herkunft', 'Schon sumerische und ägyptische Goldschmiede setzten Steine in einen Kasten aus Goldblech, dessen Rand über den Stein gedrückt wurde. Bis ins späte Mittelalter war die Zarge praktisch die einzige Fassungsart; die Krappenfassung mit Krallen kam erst später auf.'],
+      ['Warum diese Form', 'Die Zarge schützt die empfindliche Kante des Steins rundum und hält ihn auch dann, wenn er unregelmäßig geformt ist. Sie braucht kein Präzisionswerkzeug – nur Blech, Lot und einen Drücker. Der Nachteil: Von der Seite fällt kein Licht in den Stein.'],
+      ['Stand und Bedeutung', 'Gefasste Steine waren Sache der Wohlhabenden. Im Mittelalter schrieb man ihnen zudem Heil- und Schutzkräfte zu; manche Zargen sind unten offen, damit der Stein die Haut berührt.'],
+      ['Heute', 'Für geklebte Glassteine ist die Zarge ideal: Der Rand verdeckt die Klebefuge und schützt die Kante. In der Werkbank unter „Steine“: Fassung „Zarge“, die Höhe bestimmt, wie weit der Rand aus der Schiene ragt.'],
+    ],
+  },
+  {
     id: 'steigbuegel', era: 'mittelalter', title: 'Der Steigbügelring', when: 'ca. 1150 – 1400',
     stand: 'Bischöfe, Adel, wohlhabende Bürger',
     lead: 'Die Schiene steigt wie ein gotischer Bogen zu einer Spitze auf – benannt nach der Form des Steigbügels.',
@@ -119,6 +131,18 @@ export const STYLES = [
       ['Warum diese Form', 'Schiene und Fassung sind aus einem Stück geschmiedet; der Stein braucht keine angesetzte Fassung. Die Silhouette entspricht dem Spitzbogen der gotischen Baukunst – dieselbe Zeit, dasselbe Formgefühl.'],
       ['Stand und Bedeutung', 'Viele erhaltene Stücke stammen aus Bischofsgräbern; der Saphir galt als Stein des Himmels und der Keuschheit. Getragen wurde die Form aber ebenso von Adligen und reichen Bürgern. Kleiderordnungen versuchten immer wieder, Edelsteine den oberen Ständen vorzubehalten.'],
       ['Heute', 'Die Vorlage hier zeigt die Form ohne Stein – als verlaufenden Ring mit Grat. So wird sie heute oft als schlichter, architektonischer Solitär-Ersatz getragen.'],
+    ],
+  },
+  {
+    id: 'cabochon', era: 'mittelalter', title: 'Der Cabochon', when: 'vorherrschend bis ins 14. Jh.',
+    stand: 'Kirche, Hochadel, reiche Kaufleute',
+    lead: 'Nicht facettiert, sondern rund gewölbt und poliert – so wurden Steine geschliffen, bevor man Facetten schleifen konnte.',
+    preset: { form: 'band', profile: 'd', width: 3, thickness: 1.7, stones: 'solo', stoneShape: 'oval', stoneL: 14, stoneW: 10, stoneCut: 'cab', stoneColor: 'sapphire', setting: 'cone', collar: 1.2, shoulder: 3.5, material: 'gold' },
+    sections: [
+      ['Herkunft', 'Bis ins späte Mittelalter wurden Edelsteine nur gerundet und poliert; der Facettenschliff verbreitete sich in Europa erst ab dem 14. und 15. Jahrhundert. Der Name kommt vom französischen „caboche“, Kopf. Kronen, Reliquiare und Bischofsringe der Romanik und Gotik tragen Cabochons in hohen Fassungen.'],
+      ['Warum diese Form', 'Die glatte Wölbung holt die Farbe aus dem Stein, nicht das Funkeln. Sie folgt der Form des Rohsteins und verschwendet wenig Material. Die flache Unterseite lässt sich gut fassen – und heute gut kleben.'],
+      ['Stand und Bedeutung', 'Farbige Steine standen für Rang und für Tugenden: Saphir für den Himmel, Rubin für Liebe und Blut, Smaragd für Hoffnung. Kleiderordnungen behielten sie den oberen Ständen vor.'],
+      ['Heute', 'Cabochons aus Glas sind günstig, robust und in vielen Größen erhältlich – die dankbarste Wahl für erste Versuche. Große ovale Cabochons machen den Stein zum Mittelpunkt der Ringform.'],
     ],
   },
   {
@@ -254,6 +278,30 @@ export const STYLES = [
     ],
   },
   {
+    id: 'strass', era: 'neuzeit', title: 'Der Glasstein', when: 'Strass ab ca. 1730 · Maschinenschliff ab 1892',
+    stand: 'Zuerst Hof und Bürgertum · später Mode für alle',
+    lead: 'Geschliffenes Glas statt Edelstein: nicht als Fälschung gedacht, sondern als eigene, erschwingliche Pracht.',
+    preset: { form: 'band', profile: 'flat', crown: 0.2, edge: 0.3, width: 4.5, thickness: 2.2, stones: 'row', stoneCount: 5, stoneShape: 'round', stoneL: 3, stoneW: 3, stoneCut: 'flat', stoneColor: 'crystal', stoneGap: 0.5, setting: 'flush', material: 'silver' },
+    sections: [
+      ['Herkunft', 'Um 1730 entwickelte der Straßburger Juwelier Georg Friedrich Strass in Paris ein stark bleihaltiges Glas, das geschliffen dem Diamanten nahekam. „Strass“ wurde zum Begriff. 1892 ließ Daniel Swarovski eine Maschine patentieren, die Glassteine präzise und in Serie schliff – die Grundlage der heutigen Massenware.'],
+      ['Warum diese Form', 'Glas lässt sich in jeder Farbe und Form herstellen und exakt auf Maß schleifen. Darum gibt es Glassteine in genormten Größen, die in vorbereitete Fassungen passen. Steine mit flacher Rückseite werden geklebt, Steine mit Spitze sitzen in einem Kegel.'],
+      ['Stand und Bedeutung', 'Im 18. Jahrhundert trug auch der Adel Strass – auf Reisen, als Schuhschnalle, als modisches Accessoire. Im 20. Jahrhundert machte der Modeschmuck daraus eine eigene Gattung, die nicht mehr vorgab, echt zu sein.'],
+      ['Heute', 'Glassteine sind der einfachste Weg, einem selbst gedruckten Ring Farbe zu geben. Die App richtet sich nach handelsüblichen Maßen; vor dem Druck die tatsächliche Größe der gekauften Steine messen und das „Spiel“ anpassen.'],
+    ],
+  },
+  {
+    id: 'einreibe', era: 'neuzeit', title: 'Der eingelassene Stein', when: 'ab ca. 1870',
+    stand: 'Bürgertum · Herrenringe',
+    lead: 'Der Stein sitzt versenkt in der Oberfläche des Rings – nichts steht über, nichts bleibt hängen.',
+    preset: { form: 'signet', faceShape: 'cushion', faceAcross: 13, faceAlong: 12, headHeight: 4, profile: 'd', width: 4.5, thickness: 1.8, stones: 'solo', stoneShape: 'round', stoneL: 5, stoneW: 5, stoneCut: 'point', stoneColor: 'jet', setting: 'flush', material: 'gold' },
+    sections: [
+      ['Herkunft', 'Im späten 19. Jahrhundert kamen massive Ringe in Mode, in die ein Stein bündig eingelassen wurde. Der Goldschmied bohrt einen Sitz, setzt den Stein ein und reibt das umgebende Metall über dessen Rand – daher der Name Einreibefassung.'],
+      ['Warum diese Form', 'Die Fassung ist die robusteste überhaupt: Der Stein ist rundum vom Ring geschützt. Sie braucht aber Material – der Ring muss an der Stelle dicker sein als der Stein tief ist. Typisch sind Siegel- und Bandringe mit einem einzelnen Stein.'],
+      ['Stand und Bedeutung', 'Der eingelassene Stein war der Schmuck des arbeitenden Bürgers: unauffällig, alltagstauglich, männlich konnotiert. Ein kleiner Diamant im schweren Goldring zeigte Wohlstand ohne Prunk.'],
+      ['Heute', 'Heute bei Trauringen sehr verbreitet. In der Werkbank: Fassung „Eingelassen“. Ist die Schiene zu dünn für den Stein, hebt sich die Stelle automatisch an – oder man wählt einen Aufbau mit Kopf.'],
+    ],
+  },
+  {
     id: 'hammer', era: 'moderne', title: 'Der gehämmerte Ring', when: 'Arts and Crafts, ca. 1880 – 1915',
     stand: 'Reformorientiertes Bürgertum · Silber statt Gold',
     lead: 'Die Spuren des Hammers bleiben stehen – als Bekenntnis zum Handwerk.',
@@ -373,9 +421,22 @@ export const STYLES = [
       ['Heute', 'Standard bei breiten Trau- und Herrenringen. Beim Messen beachten: Bombierte Ringe sitzen lockerer, oft wählt man sie eine halbe Größe kleiner.'],
     ],
   },
+  {
+    id: 'memoire', era: 'moderne', title: 'Der Memoire-Ring', when: 'als Massenmode seit den 1960ern',
+    stand: 'Bürgertum · Geschenk zu Jahrestag und Geburt',
+    lead: 'Eine Reihe gleicher Steine rund um den Ring – ohne Anfang und ohne Ende.',
+    preset: { form: 'band', profile: 'flat', crown: 0.2, edge: 0.3, width: 3.6, thickness: 2.3, stones: 'around', stoneShape: 'round', stoneL: 2.5, stoneW: 2.5, stoneCut: 'point', stoneColor: 'crystal', stoneGap: 0.4, setting: 'flush', material: 'white' },
+    sections: [
+      ['Herkunft', 'Ringe mit umlaufend gefassten Steinen gibt es seit dem 18. Jahrhundert. Zur verbreiteten Sitte wurde der Memoire- oder Eternity-Ring in den 1960er-Jahren, als der Diamantenhandel ihn als Geschenk zum Hochzeitstag bewarb – auch, um die vielen kleinen Steine aus neuen Minen abzusetzen.'],
+      ['Warum diese Form', 'Der geschlossene Kreis aus Steinen steht für das Unendliche. Jeder Stein kann für ein Jahr, ein Kind oder eine Erinnerung stehen – daher „Memoire“. Praktisch gibt es Voll-Memoire (rundum) und Halb-Memoire (nur oben), der sich in der Größe ändern lässt.'],
+      ['Stand und Bedeutung', 'Ein Geschenk innerhalb der Ehe, kein Standeszeichen: zum Jahrestag, zur Geburt eines Kindes. Er wird meist zusammen mit Trau- und Verlobungsring getragen.'],
+      ['Heute', 'Mit Glassteinen ein reizvolles Projekt: „Rundum“ für den ganzen Ring, „Reihe“ für den Halb-Memoire. Rundum gefasste Ringe drucken sich am besten in Harz.'],
+    ],
+  },
 ];
 
 export const PRINT_NOTES = [
+  ['Steine einkleben', 'Die Sitze werden mitgedruckt, die Steine sind nicht Teil der Datei. Vor dem Druck einen gekauften Stein mit dem Messschieber messen und das Spiel anpassen. Den Sitz entfetten, wenig Zweikomponenten-Epoxid oder UV-Kleber verwenden und den Stein mit einem Wachsstift oder einer Pinzette einsetzen.'],
   ['Harzdruck (SLA/DLP)', 'Die beste Wahl für Ringe: feine Details wie Gravuren, Perlränder und Hammerschlag kommen sauber heraus. Den Ring leicht geneigt auf Stützen drucken, damit die Sichtflächen frei bleiben.'],
   ['Filamentdruck (FDM)', 'Für Passform- und Größenproben gut geeignet. Flach liegend drucken (so exportiert die App), Schichthöhe 0,1 mm oder feiner. Feine Gravuren unter 0,4 mm gehen meist verloren.'],
   ['Passform', 'Gedruckte Ringe fallen oft etwas enger aus. Eine halbe Größe mehr einstellen oder nach dem Druck innen leicht schleifen.'],

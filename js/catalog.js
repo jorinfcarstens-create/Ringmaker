@@ -103,3 +103,34 @@ export const INLAYS = {
   inside: { label: 'Innen' },
   head: { label: 'Kopf', needsHead: true },
 };
+
+// ---------------------------------------------------------------- Steine
+// Handelsübliche kalibrierte Maße in mm (Länge × Breite). Toleranz der
+// Hersteller etwa ±0,1 mm – dafür gibt es das einstellbare Spiel im Sitz.
+export const STONE_SHAPES = {
+  round: { label: 'Rund', sizes: [1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12] },
+  oval: { label: 'Oval', sizes: [[5, 3], [6, 4], [7, 5], [8, 6], [10, 8], [12, 10], [14, 10], [16, 12], [18, 13]] },
+  octagon: { label: 'Achteck', sizes: [[5, 3], [6, 4], [7, 5], [8, 6], [10, 8], [12, 10], [14, 10]] },
+  square: { label: 'Carré', sizes: [2, 3, 4, 5, 6, 8] },
+  cushion: { label: 'Kissen', sizes: [4, 5, 6, 8, 10] },
+  baguette: { label: 'Baguette', sizes: [[3, 1.5], [4, 2], [5, 2.5], [6, 3], [8, 4]] },
+  pear: { label: 'Tropfen', sizes: [[5, 3], [6, 4], [7, 5], [8, 5], [9, 6], [10, 7], [12, 8], [14, 9]] },
+  marquise: { label: 'Navette', sizes: [[4, 2], [5, 2.5], [6, 3], [8, 4], [10, 5], [12, 6]] },
+};
+export const STONE_CUTS = {
+  point: { label: 'Facettiert, spitz', hint: 'Klassischer Schliff mit Spitze (Chaton). Der Sitz ist ein Kegel, der Stein liegt mit der Rundiste auf' },
+  flat: { label: 'Facettiert, flach', hint: 'Strass mit flacher Rückseite (Flatback). Der Sitz ist eine flache Tasche' },
+  cab: { label: 'Cabochon', hint: 'Glatt gewölbt, flache Rückseite. Der Sitz ist eine flache Tasche' },
+};
+export const STONE_LAYOUTS = {
+  none: { label: 'Ohne' },
+  solo: { label: 'Solitär' },
+  trio: { label: 'Trio' },
+  row: { label: 'Reihe' },
+  around: { label: 'Rundum' },
+};
+export const SETTINGS = {
+  flush: { label: 'Eingelassen', hint: 'Der Sitz ist in den Ring versenkt. Reicht die Materialstärke nicht, hebt sich die Stelle automatisch etwas an' },
+  bezel: { label: 'Zarge', hint: 'Ein aufgesetzter Rand mit senkrechter Wand umschließt den Stein' },
+  cone: { label: 'Kelch', hint: 'Die Fassung wächst in weichem Schwung aus der Schiene – bei großen Steinen prägt sie die ganze Ringform' },
+};

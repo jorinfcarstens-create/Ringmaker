@@ -40,6 +40,10 @@ for (const contour of ['scallop', 'crown']) check(contour, { ...DEFAULTS, contou
 for (const sides of [3, 4, 8, 12]) check('poly' + sides, { ...DEFAULTS, outline: 'poly', outlineSides: sides, profile: 'flat' });
 for (const twist of [1, 6]) for (const closure of ['closed', 'open', 'spiral']) check(`twist${twist}/${closure}`, { ...DEFAULTS, twist, closure, profile: 'flat', width: 2.5, thickness: 2.5 });
 for (const inlay of ['center', 'edges', 'half', 'inside', 'head']) check('inlay/' + inlay, { ...DEFAULTS, inlay, form: 'signet' });
+for (const stones of ['solo', 'trio', 'row', 'around']) for (const setting of ['flush', 'bezel', 'cone']) for (const form of ['band', 'signet', 'bombe']) check(`${stones}/${setting}/${form}`, { ...DEFAULTS, stones, setting, form, stoneL: 3, stoneW: 3 });
+for (const stoneShape of ['round', 'oval', 'octagon', 'square', 'cushion', 'baguette', 'pear', 'marquise']) for (const stoneCut of ['point', 'flat', 'cab']) for (const stoneTurn of [false, true]) check(`${stoneShape}/${stoneCut}`, { ...DEFAULTS, stones: 'solo', stoneShape, stoneCut, stoneTurn, stoneL: 10, stoneW: 7, setting: 'cone' });
+check('großer Stein', { ...DEFAULTS, stones: 'solo', stoneShape: 'oval', stoneL: 18, stoneW: 13, stoneCut: 'cab', setting: 'cone', width: 3 });
+check('offen mit Stein', { ...DEFAULTS, stones: 'solo', closure: 'open' });
 check('navette', { ...DEFAULTS, form: 'signet', faceShape: 'navette', faceAcross: 9, faceAlong: 18 });
 check('alles', { ...DEFAULTS, path: 'wave', contour: 'scallop', outline: 'poly', twist: 2, closure: 'open', endStyle: 'ball', pattern: 'bark', profile: 'double' });
 const a = check('preview', { ...DEFAULTS, pattern: 'hammered' });

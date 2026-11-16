@@ -1,5 +1,6 @@
 import { DEFAULTS, normalize, profileAt, sizeToDiameter, sizeToUS } from './ring.js';
-import { MATERIALS, MATERIAL_GROUPS, FINISHES, FORMS, PROFILES, PATTERNS, FACES, PATHS, CLOSURES, ENDS, OUTLINES, CONTOURS, ZONES, INLAYS } from './catalog.js';
+import { MATERIALS, MATERIAL_GROUPS, FINISHES, FORMS, PROFILES, PATTERNS, FACES, PATHS, CLOSURES, ENDS, OUTLINES, CONTOURS, ZONES, INLAYS, STONE_SHAPES, STONE_CUTS, STONE_LAYOUTS, SETTINGS } from './catalog.js';
+import { STONE_COLORS, stoneOutline } from './gems.js';
 import { FONTS } from './text.js';
 import { Viewer } from './viewer.js';
 import { db, persist, saveRing, deleteRing, getRing, deliver, ringFile, backupFile, parseImport, stlFile } from './store.js';
@@ -87,14 +88,24 @@ function pump() {
 const ringKey = (r) => r.id + ':' + r.updated;
 
 // ============================================================ Werkbank
-const SEGS = { form: 'Form', rail: 'Schiene', profile: 'Profil', size: 'Maße', material: 'Material', surface: 'Struktur', text: 'Gravur' };
+const SEGS = { form: 'Form', rail: 'Schiene', profile: 'Profil', size: 'Maße', stones: 'Steine', surface: 'Struktur', text: 'Gravur', material: 'Material' };
 
-let rafPending = false, saveTimer;
-function changed({ refit = false, rerender = false } = {}) {
+let rafPending = false, saveTimer, refineTimer, pendingRefit = false, pendingLight = true;
+// light = während des Ziehens an einem Regler: grobes Netz sofort, feines kurz danach
+function changed({ refit = false, rerender = false, light = false } = {}) {
   cur.dirty = true;
+  pendingRefit = pendingRefit || refit;
+  pendingLight = pendingLight && light;
   if (!rafPending) {
     rafPending = true;
-    requestAnimationFrame(() => { rafPending = false; redraw(refit); });
+    requestAnimationFrame(() => {
+      rafPending = false;
+      const l = pendingLight, r = pendingRefit;
+      pendingLight = true; pendingRefit = false;
+      redraw(r, l ? 'light' : 'preview');
+      clearTimeout(refineTimer);
+      if (l) refineTimer = setTimeout(() => redraw(false, 'preview'), 240);
+    });
   }
   if (rerender) renderControls();
   clearTimeout(saveTimer);
@@ -106,10 +117,17 @@ function saveDraft() {
   db.draftId = cur.id;
   persist();
 }
-function redraw(refit) {
+function redraw(refit, quality = 'preview') {
   if (!viewer) return;
-  cur.stats = viewer.setRing(cur.params, { refit });
+  cur.stats = viewer.setRing(cur.params, { refit, quality });
   renderStats();
+}
+// Der Ring wird zwischen Kopfzeile und Fußzeile der Bühne eingepasst.
+function updateInsets() {
+  const stage = $('#bench-stage');
+  if (!viewer || !stage.clientHeight) return;
+  const box = stage.getBoundingClientRect();
+  viewer.setInsets($('#bench-stage .stage-top').getBoundingClientRect().bottom - box.top, (box.bottom - $('#bench-stage .stage-bottom').getBoundingClientRect().top) * 0.6);
 }
 function weight() {
   const m = MATERIALS[cur.params.material] || MATERIALS.gold;
@@ -122,7 +140,9 @@ function renderStats() {
   $('#bench-stats').innerHTML =
     `<b>Größe ${fmt(p.size, 0)}</b> · Ø ${fmt(s.innerDiameter)} mm<br>` +
     `${fmt(weight())} g ${(MATERIALS[p.material] || MATERIALS.gold).label}` +
+    (s.stones && s.stones.length ? ` · ${s.stones.length} ${s.stones.length === 1 ? 'Stein' : 'Steine'}` : '') +
     (thin ? `<br><span class="warn">Dünnste Stelle ${fmt(s.minWall, 2)} mm</span>` : '');
+  updateInsets();
   const facts = $('#facts');
   if (facts) facts.replaceWith(factsBlock());
 }
@@ -146,7 +166,7 @@ function slider(key, label, min, max, step, unit = 'mm', digits = 1, extra) {
   show();
   const input = h('input', {
     type: 'range', min, max, step, value: p[key], id: 'f-' + key, 'aria-label': label,
-    oninput: (e) => { p[key] = Number(e.target.value); show(); changed(); },
+    oninput: (e) => { p[key] = Number(e.target.value); show(); changed({ light: true }); },
   });
   return h('div', { class: 'field' }, h('div', { class: 'field-head' }, h('label', { class: 'label', for: 'f-' + key }, label), out), input);
 }
@@ -218,6 +238,16 @@ function renderSegs() {
     h('button', { type: 'button', role: 'tab', 'aria-selected': String(cur.seg === id), onclick: () => { cur.seg = id; renderSegs(); renderControls(); $('#controls').scrollTop = 0; } }, label)));
 }
 
+function stoneIcon(shape) {
+  const sz = STONE_SHAPES[shape].sizes[2], l = Array.isArray(sz) ? sz[0] : sz, w = Array.isArray(sz) ? sz[1] : sz;
+  const k = 22 / l, pts = stoneOutline(shape, w / 2 * k, l / 2 * k, false, 40);
+  return svg('0 0 44 30', pts.map(([x, z], i) => (i ? 'L' : 'M') + (22 + z).toFixed(1) + ' ' + (15 - x).toFixed(1)).join('') + 'Z');
+}
+const sizeLabel = (v) => (Array.isArray(v) ? `${fmt(v[0], v[0] % 1 ? 1 : 0)} × ${fmt(v[1], v[1] % 1 ? 1 : 0)}` : `${fmt(v, v % 1 ? 1 : 0)} mm`);
+function stoneName(p) {
+  const size = ['round', 'square', 'cushion'].includes(p.stoneShape) ? `${fmt(p.stoneL, p.stoneL % 1 ? 1 : 0)} mm` : `${fmt(p.stoneL, p.stoneL % 1 ? 1 : 0)} × ${fmt(p.stoneW, p.stoneW % 1 ? 1 : 0)} mm`;
+  return `${STONE_SHAPES[p.stoneShape].label} ${size}, ${STONE_CUTS[p.stoneCut].label.toLowerCase()}, ${STONE_COLORS[p.stoneColor].label}`;
+}
 const matChip = (k) => h('span', { class: 'swatch', style: `background:${hex(MATERIALS[k].color)}` });
 const matOptions = (keys) => Object.fromEntries(keys.map((k) => [k, MATERIALS[k].label + (MATERIALS[k].note ? ' ' + MATERIALS[k].note : '')]));
 
@@ -254,6 +284,36 @@ function renderControls() {
     if (p.contour !== 'none') add(slider('contourAmp', p.contour === 'crown' ? 'Höhe der Zacken' : 'Tiefe der Bögen', 0.2, 2.5, 0.1), slider('contourCount', p.contour === 'crown' ? 'Zacken' : 'Bögen', 4, 36, 1, '', 0));
     add(divider(), slider('twist', 'Drehung des Querschnitts', 0, 12, 1, '', 0, (v) => (v ? (v === 1 ? 'Umdrehung' : 'Umdrehungen') : 'keine')));
     add(hint(head ? 'Bei Ringen mit Kopf ist die Drehung abgeschaltet.' : 'Wirkt am stärksten mit kantigen Profilen: „Flach“ oder „Kissen“ bei gleicher Breite und Stärke ergibt den gedrehten Vierkant.'));
+  } else if (cur.seg === 'stones') {
+    add(chips('stones', 'Anordnung', STONE_LAYOUTS, { refit: true }));
+    if (p.stones === 'none') add(hint('Glassteine zum Einkleben: Der Ring bekommt passende Sitze, die mitgedruckt werden. Die Steine selbst sind nicht Teil der Druckdatei.'));
+    else {
+      if (p.closure === 'spiral' || (p.twist && !head)) add(note('Bei Spiralen und gedrehten Schienen sind keine Fassungen möglich.'));
+      add(chips('stoneShape', 'Form des Steins', STONE_SHAPES, { tiles: true, icon: stoneIcon }));
+      const sizes = STONE_SHAPES[p.stoneShape].sizes;
+      if (!sizes.some((v) => Math.abs((Array.isArray(v) ? v[0] : v) - p.stoneL) < 0.01)) { const v = sizes[Math.min(3, sizes.length - 1)]; p.stoneL = Array.isArray(v) ? v[0] : v; p.stoneW = Array.isArray(v) ? v[1] : v; }
+      const wrap = h('div', { class: 'chips', role: 'group', 'aria-label': 'Größe' });
+      for (const v of sizes) {
+        const l = Array.isArray(v) ? v[0] : v, w = Array.isArray(v) ? v[1] : v;
+        wrap.append(h('button', { class: 'chip', type: 'button', 'aria-pressed': String(Math.abs(p.stoneL - l) < 0.01 && Math.abs(p.stoneW - w) < 0.01), onclick: () => { p.stoneL = l; p.stoneW = w; changed({ rerender: true, refit: true }); } }, sizeLabel(v)));
+      }
+      add(h('div', { class: 'field' }, h('span', { class: 'label' }, 'Größe'), wrap));
+      if (p.stoneL !== p.stoneW) add(h('label', { class: 'switch' }, h('span', {}, 'Lange Seite quer zum Finger'), h('input', { type: 'checkbox', id: 'f-turn', checked: p.stoneTurn, onchange: (e) => { p.stoneTurn = e.target.checked; changed({ refit: true }); } })));
+      add(chips('stoneCut', 'Schliff', STONE_CUTS), hint(STONE_CUTS[p.stoneCut].hint + '.'));
+      add(chips('stoneColor', 'Farbe', Object.fromEntries(Object.entries(STONE_COLORS).map(([k, v]) => [k, v.label])), { icon: (k) => h('span', { class: 'swatch gem', style: `background:${hex(STONE_COLORS[k].color)}` }) }));
+      if (p.stones === 'row') add(slider('stoneCount', 'Anzahl', 2, 13, 1, '', 0));
+      if (p.stones !== 'solo') add(slider('stoneGap', 'Abstand zwischen den Steinen', 0, 4, 0.1));
+      add(divider(), chips('setting', 'Fassung', SETTINGS), hint(SETTINGS[p.setting].hint + '.'));
+      if (p.setting !== 'flush') add(slider('collar', 'Höhe über der Schiene', 0, 4.5, 0.1));
+      if (p.setting === 'cone') add(slider('shoulder', 'Auslauf', 0.5, 9, 0.1));
+      add(slider('wall', 'Wandstärke', 0.4, 1.8, 0.05, 'mm', 2), slider('clearance', 'Spiel zum Stein', 0, 0.3, 0.01, 'mm', 2));
+      const n = cur.stats?.stones?.length || 0;
+      if (n) {
+        const small = p.stones === 'trio' ? ` (Mitte) und 2 kleinere mit etwa ${fmt(p.stoneL * 0.62)} mm` : '';
+        add(note(`Einkaufsliste: ${p.stones === 'trio' ? 1 : n} × ${stoneName(p)}${small}.`));
+      }
+      add(hint('Das Spiel gleicht Maßabweichungen der Steine (etwa ±0,1 mm) und des Drucks aus. Zum Kleben eignet sich Zweikomponenten-Epoxid oder UV-Kleber.'));
+    }
   } else if (cur.seg === 'size') {
     add(slider('size', 'Ringgröße (Innenumfang)', 40, 76, 0.5, 'mm', 1, (v) => 'Ø ' + fmt(sizeToDiameter(v), 1) + ' mm'),
       slider('width', p.form === 'band' ? 'Breite' : 'Breite der Schiene', 1.2, 14, 0.1),
@@ -426,6 +486,7 @@ function renderStack() {
   $('#stack-finger').checked = !!db.finger;
   $('#stack-finger').parentElement.hidden = db.stackMode !== 'stack';
   $('#stack-empty').hidden = items.length > 0;
+  { const st = $('#stack-stage'), bx = st.getBoundingClientRect(); stackViewer.setInsets($('#stack-stage .stage-top').getBoundingClientRect().bottom - bx.top, 34); }
   const info = stackViewer.setRings(items.map(({ s, r }) => ({ ...r.params, _flip: s.flip })), { mode: db.stackMode, finger: db.finger });
   $('#stack-stats').innerHTML = items.length
     ? `<b>${items.length} ${items.length === 1 ? 'Ring' : 'Ringe'}</b>` + (db.stackMode === 'stack' ? ` · zusammen ${fmt(info.length)} mm breit` : '')
@@ -512,7 +573,7 @@ function openPrint() {
 function go(tab) {
   for (const v of document.querySelectorAll('.view')) v.hidden = v.dataset.view !== tab;
   for (const b of $('#tabbar').children) b.toggleAttribute('aria-current', b.dataset.tab === tab), b.dataset.tab === tab && b.setAttribute('aria-current', 'page');
-  if (tab === 'bench') { viewer?.resize(); }
+  if (tab === 'bench') { viewer?.resize(); updateInsets(); }
   if (tab === 'gallery') renderGallery();
   if (tab === 'stack') { renderStack(); stackViewer?.resize(); }
   if (tab === 'book') renderBook();
@@ -523,6 +584,8 @@ $('#tabbar').addEventListener('click', (e) => { const b = e.target.closest('butt
 renderSegs();
 renderControls();
 redraw(true);
+addEventListener('resize', updateInsets);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { viewer?.refreshBackdrop(); stackViewer?.refreshBackdrop(); });
 let startTab = 'bench';
 try { startTab = sessionStorage.getItem('ringmaker.tab') || 'bench'; } catch (e) { /* egal */ }
 go(startTab);
