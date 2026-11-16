@@ -299,7 +299,7 @@ function exportSheet(name, params) {
   const run = (make, okMsg) => async () => {
     toast('Datei wird vorbereitet …');
     await new Promise((r) => setTimeout(r, 40));
-    try { const f = make(); await deliver(f.blob, f.filename); toast(okMsg); }
+    try { const f = make(); if (await deliver(f.blob, f.filename)) toast(okMsg); }
     catch (e) { toast('Export fehlgeschlagen'); }
   };
   sheet(h('h2', {}, 'Exportieren'), h('p', {}, `„${name}“ als Datei sichern oder weitergeben.`),
