@@ -5,16 +5,18 @@ live in 3D betrachtet, sammelt, stapelt und für den 3D-Druck exportiert.
 
 ## Was die App kann
 
-- **Werkbank** – Ring über Regler gestalten, die 3D-Ansicht folgt live und lässt sich mit dem Finger drehen und zoomen.
-  - Grundformen: Bandring, Verlaufring, Siegelring (oval, Kissen, eckig), Kuppelring, Wellenring, V-Ring
-  - Querschnitte: Halbrund, Bombiert (Comfort Fit), Flach, Rund, Messerkante, Fase, Hohlkehle
-  - Oberflächen: Rillen, Kanneluren, Perlrand, Gehämmert, Kordel, Rändel, Facetten, Kugeln
+- **Werkbank** – Ring über Regler gestalten, die 3D-Ansicht folgt live und lässt sich mit dem Finger drehen und zoomen. Die Bausteine sind frei kombinierbar:
+  - Aufbau: Band, Verlauf, Siegelkopf (oval, Kissen, eckig, Navette), Kuppel
+  - Außenkontur: rund oder Vieleck (3–12 Ecken, mit Eckenrundung)
+  - Schiene: Verlauf (gerade, Welle, Zickzack, V-Spitze), Verschluss (geschlossen, offen, Spirale/Bypass; Enden rund, gerade, Kugel, spitz), Kantenform (gerade, Bogenkante, Krone), Drehung des Querschnitts
+  - 15 Querschnitte: Halbrund, Bombiert, Linse, Flach, Kissen, Rund, Messerkante, Fase, Pult, Hohlkehle, Randprofil, Stufe, Mittelwulst, Doppelwulst, Dreiwulst
+  - 14 Strukturen: Rillen, Kanneluren, Rippen, Schrägrillen, Guilloche, Perlrand, Gehämmert, Rinde, Punzen, Pyramiden, Schuppen, Kordel, Rändel, Kugeln – wahlweise auf ganzer Fläche, nur mittig oder nur an den Rändern
   - Gravur/Prägung: außen (vertieft oder erhaben), innen, Initialen auf der Siegelplatte
-  - Material: Gold-, Silber-, Platintöne, Titan, Stahl, Bronze, Kupfer, Eisen, Kunstharz – poliert, seidenmatt oder matt, mit einstellbarer Deckkraft (transparent)
+  - 21 Werkstoffe (Gold-, Silber-, Platintöne, Titan, Stahl, Wolfram, Bronze, Messing, Kupfer, Eisen, Keramik, Kunstharz), drei Oberflächen, einstellbare Deckkraft, Zweitmetall (Mittelstreifen, Ränder, längs geteilt, innen, Kopf)
   - Anzeige von Innendurchmesser, US-Größe, Volumen und Gewicht im gewählten Material
 - **Galerie** – gespeicherte Ringe mit Vorschaubild; bearbeiten, duplizieren, löschen, exportieren, importieren.
 - **Stapel** – mehrere Ringe zusammen auf einem Ringstab oder nebeneinander. V- und Wellenringe schmiegen sich ineinander.
-- **Stilbuch** – 16 Ringformen historisch eingeordnet (Herkunft, Grund der Form, Stand, heutige Verwendung), jede als Vorlage zu öffnen.
+- **Stilbuch** – 27 Ringformen und Techniken historisch eingeordnet (Herkunft, Grund der Form, Stand, heutige Verwendung), jede als Vorlage zu öffnen.
 - **Export** – STL für den 3D-Druck (Millimeter, geschlossener Körper, liegt flach auf dem Druckbett), Ring-Datei (`.ring.json`) zum Weitergeben und Sichern, PNG-Bild.
 
 Alle Daten bleiben auf dem Gerät. Es gibt kein Konto, keinen Server und keine Übertragung.

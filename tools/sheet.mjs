@@ -11,7 +11,7 @@ await page.goto('http://localhost:8080/index.html');
 await page.waitForFunction(() => window.ringmaker);
 await page.evaluate(({ list, cols }) => {
   const d = document.createElement('div');
-  d.style.cssText = `position:fixed;inset:0;z-index:99;background:#12251f;display:grid;grid-template-columns:repeat(${cols},300px)`;
+  d.style.cssText = `position:fixed;inset:0;z-index:99;background:#0d1020;display:grid;grid-template-columns:repeat(${cols},300px)`;
   for (const p of list) { const i = new Image(); i.src = ringmaker.viewer.snapshot(p, 300); d.append(i); }
   document.body.append(d);
 }, { list, cols });

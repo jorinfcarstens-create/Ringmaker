@@ -14,7 +14,7 @@ for (const [name, size] of [['icon-512', 512], ['icon-192', 192], ['apple-touch-
     const c = document.createElement('canvas'); c.width = c.height = size;
     const g = c.getContext('2d');
     const grad = g.createRadialGradient(size / 2, size * 0.4, 0, size / 2, size / 2, size * 0.75);
-    grad.addColorStop(0, '#2f5a4e'); grad.addColorStop(1, '#0b1815');
+    grad.addColorStop(0, '#3a4276'); grad.addColorStop(1, '#090b15');
     g.fillStyle = grad; g.fillRect(0, 0, size, size);
     const s = size * 0.8;
     g.drawImage(ring, (size - s) / 2, (size - s) / 2 + size * 0.02, s, s);

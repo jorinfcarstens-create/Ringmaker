@@ -1,6 +1,6 @@
 // Offline-Betrieb: Die App-Dateien werden beim ersten Besuch gespeichert.
 // Bei einer neuen Version CACHE hochzählen.
-const CACHE = 'ringmaker-v1';
+const CACHE = 'ringmaker-v2';
 const FILES = [
   './', 'index.html', 'css/app.css', 'manifest.webmanifest',
   'js/app.js', 'js/ring.js', 'js/viewer.js', 'js/text.js', 'js/catalog.js', 'js/store.js', 'js/handbook.js',

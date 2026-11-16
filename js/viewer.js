@@ -12,7 +12,7 @@ function buildStudio() {
   const scene = new THREE.Scene();
   const box = new THREE.Mesh(
     new THREE.BoxGeometry(20, 12, 20),
-    new THREE.MeshBasicMaterial({ color: 0x8d9391, side: THREE.BackSide }));
+    new THREE.MeshBasicMaterial({ color: 0x8e9096, side: THREE.BackSide }));
   scene.add(box);
   const panel = (w, h, color, intensity, pos, rot) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h),
@@ -21,7 +21,7 @@ function buildStudio() {
     scene.add(m);
   };
   panel(13, 13, 0xffffff, 5.5, [0, 5.9, 0], [Math.PI / 2, 0, 0]);       // Decke
-  panel(20, 20, 0x2a2f2e, 1, [0, -5.9, 0], [-Math.PI / 2, 0, 0]);        // Boden
+  panel(20, 20, 0x2b2c33, 1, [0, -5.9, 0], [-Math.PI / 2, 0, 0]);        // Boden
   panel(6, 9, 0xfff3e2, 7, [-9.5, 1, 3], [0, Math.PI / 2, 0]);           // Softbox links (warm)
   panel(5, 8, 0xeaf3ff, 5, [9.5, 0.5, -2], [0, -Math.PI / 2, 0]);        // Softbox rechts (kühl)
   panel(9, 5, 0xffffff, 6, [1, 2, 9.6], [0, Math.PI, 0]);                // hinter der Kamera
@@ -45,12 +45,13 @@ function shadowTexture() {
   return new THREE.CanvasTexture(c);
 }
 
-export function makeMaterial(p) {
+export function makeMaterial(p, twoTone = false) {
   const m = MATERIALS[p.material] || MATERIALS.gold;
   const f = FINISHES[p.finish] || FINISHES.polished;
   const opacity = Math.min(p.opacity ?? 1, m.opacity ?? 1);
   return new THREE.MeshPhysicalMaterial({
-    color: m.color,
+    color: twoTone ? 0xffffff : m.color,
+    vertexColors: twoTone,
     metalness: m.metal,
     roughness: Math.min(1, Math.max(m.rough ?? 0, f.rough)),
     clearcoat: m.metal ? 0 : 0.6,
@@ -68,17 +69,27 @@ export function ringGeometry(params, quality) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(built.positions, 3));
   geo.setIndex(new THREE.BufferAttribute(built.indices, 1));
+  if (built.zone) { // Zweitmetall als Farbe je Eckpunkt
+    const c1 = new THREE.Color((MATERIALS[p.material] || MATERIALS.gold).color);
+    const c2 = new THREE.Color((MATERIALS[p.material2] || MATERIALS.silver).color);
+    const col = new Float32Array(built.zone.length * 3);
+    for (let i = 0; i < built.zone.length; i++) {
+      const c = built.zone[i] ? c2 : c1;
+      col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  }
   geo.computeVertexNormals();
   geo.computeBoundingSphere();
-  return { geo, built };
+  return { geo, built, twoTone: !!built.zone };
 }
 
 // Abstand, den Ring B hinter Ring A braucht, damit beide sich berühren,
 // aber nicht durchdringen (V- und Wellenringe schmiegen sich ineinander).
 function nestOffset(a, b) {
   let m = -Infinity;
-  for (let k = 0; k < EXTENT_STEPS; k++) m = Math.max(m, a.hi[k] - b.lo[k]);
-  return m;
+  for (let k = 0; k < EXTENT_STEPS; k++) if (a.hi[k] > -1e9 && b.lo[k] < 1e9) m = Math.max(m, a.hi[k] - b.lo[k]);
+  return m > -1e9 ? m : 0;
 }
 
 export class Viewer {
@@ -105,7 +116,7 @@ export class Viewer {
     this.scene.add(this.shadow);
 
     this.finger = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 48, 1),
-      new THREE.MeshStandardMaterial({ color: 0x122722, roughness: 1, metalness: 0, envMapIntensity: 0.3 }));
+      new THREE.MeshStandardMaterial({ color: 0x1b1d26, roughness: 1, metalness: 0, envMapIntensity: 0.3 }));
     this.finger.rotation.x = Math.PI / 2;
     this.finger.visible = false;
     this.scene.add(this.finger);
@@ -194,14 +205,14 @@ export class Viewer {
   // Ein einzelner Ring (Werkbank). Liefert die Kennzahlen zurück.
   setRing(params, { refit = false } = {}) {
     const p = normalize(params);
-    const { geo, built } = ringGeometry(p, 'preview');
+    const { geo, built, twoTone } = ringGeometry(p, 'preview');
     if (this.meshes.length === 1) {
       const m = this.meshes[0];
       m.geometry.dispose(); m.geometry = geo;
-      m.material.dispose(); m.material = makeMaterial(p);
+      m.material.dispose(); m.material = makeMaterial(p, twoTone);
     } else {
       this._clear();
-      const m = new THREE.Mesh(geo, makeMaterial(p));
+      const m = new THREE.Mesh(geo, makeMaterial(p, twoTone));
       this.group.add(m); this.meshes.push(m);
     }
     this.meshes[0].position.set(0, 0, 0);
@@ -218,12 +229,12 @@ export class Viewer {
     let z = 0, x = 0, prev = null, first = 0, last = 0, maxIn = 0;
     list.forEach((params, i) => {
       const p = normalize(params);
-      const { geo, built } = ringGeometry(p, list.length > 1 ? 'light' : 'preview');
-      const mesh = new THREE.Mesh(geo, makeMaterial(p));
+      const { geo, built, twoTone } = ringGeometry(p, list.length > 1 ? 'light' : 'preview');
+      const mesh = new THREE.Mesh(geo, makeMaterial(p, twoTone));
       let ext = ringExtents(p);
       if (params._flip) {
         mesh.rotation.y = Math.PI;
-        ext = { lo: ext.hi.map((v) => -v), hi: ext.lo.map((v) => -v) };
+        ext = { lo: ext.hi.map((v) => -v), hi: ext.lo.map((v) => -v), min: ext.min, max: ext.max };
       }
       const r = built.stats.outerDiameter / 2;
       if (mode === 'row') {
@@ -234,8 +245,8 @@ export class Viewer {
         if (prev) z += nestOffset(prev, ext) + 0.05;
         mesh.position.z = z;
         prev = ext;
-        if (i === 0) first = z + Math.min(...ext.lo);
-        last = z + Math.max(...ext.hi);
+        if (i === 0) first = z + (params._flip ? -ext.max : ext.min);
+        last = z + (params._flip ? -ext.min : ext.max);
         maxIn = Math.max(maxIn, built.stats.innerDiameter / 2);
       }
       this.group.add(mesh); this.meshes.push(mesh);
@@ -257,8 +268,8 @@ export class Viewer {
   // Vorschaubild mit fester Perspektive (für Galerie und Stilbuch).
   snapshot(params, size = 320) {
     const p = normalize({ ...params, opacity: 1 });
-    const { geo, built } = ringGeometry(p, 'preview');
-    const mesh = new THREE.Mesh(geo, makeMaterial(p));
+    const { geo, built, twoTone } = ringGeometry(p, 'preview');
+    const mesh = new THREE.Mesh(geo, makeMaterial(p, twoTone));
     const scene = new THREE.Scene();
     scene.environment = this.scene.environment;
     scene.add(mesh);

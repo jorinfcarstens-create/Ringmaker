@@ -3,35 +3,62 @@
 //
 // Koordinaten (mm): Ringachse = Z. Oberseite (Kopf/Platte) bei +Y.
 // Winkel a = 0 liegt oben, a = ±PI unten.  X = r·sin(a), Y = r·cos(a).
+//
+// Ein Ring setzt sich aus unabhängigen Bausteinen zusammen:
+//   form     Aufbau: gleichmäßig, verlaufend, mit Kopf (Siegel/Kuppel)
+//   path     Verlauf der Schiene: gerade, Welle, V, Zickzack
+//   closure  geschlossen, offen (Spange) oder Spirale/Bypass
+//   outline  Außenkontur: rund oder Vieleck
+//   contour  Kantenform: gerade, Bogenkante, Krone
+//   twist    Drehung des Querschnitts um die eigene Achse
+//   profile  Querschnitt · pattern Struktur · Gravur · Zweitmetall
 
 const TAU = Math.PI * 2;
 
 export const DEFAULTS = {
-  form: 'band',          // band | taper | signet | bombe | wave | vee
+  form: 'band',          // band | taper | signet | bombe
   size: 54,              // Innenumfang in mm (= EU-Ringgröße)
   width: 5,              // Ringbreite (Schiene) in mm
   thickness: 1.8,        // Materialstärke (Schiene) in mm
-  profile: 'd',          // flat | d | comfort | round | knife | bevel | concave
+  profile: 'd',
   crown: 0.8,            // Ausprägung des Profils 0..1
   edge: 0.3,             // Kantenradius in mm
 
-  taperWidth: 9,         // Verlaufring: Breite oben
-  taperThickness: 2.6,   // Verlaufring: Stärke oben
+  taperWidth: 9,
+  taperThickness: 2.6,
 
   faceAcross: 14,        // Kopf: Ausdehnung quer zum Finger
   faceAlong: 11,         // Kopf: Ausdehnung entlang des Fingers
   headHeight: 3.6,       // Kopf: Materialstärke oben
-  faceShape: 'oval',     // oval | cushion | square
+  faceShape: 'oval',     // oval | cushion | square | navette
 
+  path: 'straight',      // straight | wave | vee | zigzag
   waveAmp: 1.2,
   waveCount: 3,
   veeDepth: 3,
   veeSpread: 0.5,
 
-  pattern: 'none',       // none | grooves | flutes | milgrain | hammered | rope | knurl | facets | beads
+  closure: 'closed',     // closed | open | spiral
+  gap: 4,                // Öffnung in mm
+  turns: 2.5,            // Windungen der Spirale (ab 1,1 = Bypass)
+  spiralPitch: 0.6,      // Abstand zwischen den Windungen
+  endStyle: 'round',     // round | flat | ball | point
+
+  outline: 'round',      // round | poly
+  outlineSides: 8,
+  outlineSoft: 0.2,
+
+  contour: 'none',       // none | scallop | crown
+  contourAmp: 0.8,
+  contourCount: 12,
+
+  twist: 0,              // ganze Drehungen des Querschnitts
+
+  pattern: 'none',
   patternDepth: 0.25,
-  patternCount: 2,       // Rillen / Facetten-Zahl
-  patternScale: 1,       // Dichte
+  patternCount: 2,
+  patternScale: 1,
+  patternZone: 'all',    // all | center | edges
 
   textOuter: '',
   textInner: '',
@@ -44,10 +71,16 @@ export const DEFAULTS = {
   material: 'gold',
   finish: 'polished',
   opacity: 1,
+  inlay: 'none',         // none | center | edges | half | inside | head
+  inlayWidth: 0.4,
+  material2: 'silver',
 };
 
 export function normalize(p) {
   const o = { ...DEFAULTS, ...(p || {}) };
+  // ältere Ringe: Welle und V waren eigene Grundformen
+  if (o.form === 'wave' || o.form === 'vee') { o.path = o.form; o.form = 'band'; }
+  if (o.pattern === 'facets') { o.pattern = 'none'; o.outline = 'poly'; o.outlineSides = Math.max(5, (o.patternCount || 4) + 4); o.outlineSoft = 0; }
   const num = (k, lo, hi) => {
     let v = Number(o[k]);
     if (!Number.isFinite(v)) v = DEFAULTS[k];
@@ -57,12 +90,17 @@ export function normalize(p) {
   num('crown', 0, 1); num('edge', 0, 1.2);
   num('taperWidth', 1, 20); num('taperThickness', 0.8, 7);
   num('faceAcross', 6, 26); num('faceAlong', 5, 24); num('headHeight', 1.5, 9);
-  num('waveAmp', 0, 4); num('waveCount', 1, 10);
+  num('waveAmp', 0, 4); num('waveCount', 1, 12);
   num('veeDepth', 0, 8); num('veeSpread', 0.15, 1.2);
+  num('gap', 0.5, 14); num('turns', 1.1, 5); num('spiralPitch', 0, 4);
+  num('outlineSides', 3, 16); num('outlineSoft', 0, 1);
+  num('contourAmp', 0.1, 3); num('contourCount', 3, 40);
+  num('twist', 0, 16);
   num('patternDepth', 0.02, 0.8); num('patternCount', 1, 24); num('patternScale', 0.4, 2.5);
   num('textSize', 0.25, 0.95); num('textDepth', 0.05, 0.6); num('opacity', 0.15, 1);
-  o.waveCount = Math.round(o.waveCount);
-  o.patternCount = Math.round(o.patternCount);
+  num('inlayWidth', 0.1, 0.9);
+  for (const k of ['waveCount', 'patternCount', 'outlineSides', 'contourCount', 'twist']) o[k] = Math.round(o[k]);
+  if (o.closure === 'spiral') o.form = 'band';
   return o;
 }
 
@@ -76,6 +114,7 @@ function cornerDrop(ax, w, rho) {
   if (d <= 0) return 0;
   return rho - Math.sqrt(Math.max(0, rho * rho - d * d));
 }
+const sm = (x) => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
 
 const _po = [0, 0];
 // Höhe der Außen- (o) und Innenkontur (i) über der Fingerfläche an Stelle x.
@@ -84,10 +123,11 @@ export function profileAt(type, x, w, t, crown, edge, out = _po) {
   const arc = Math.sqrt(Math.max(0, 1 - q * q));
   let o, i;
   const ri = Math.min(edge * 0.6, w * 0.5, t * 0.3);
+  const rho = Math.min(edge, w * 0.5, t * 0.3);
   switch (type) {
     case 'flat': {
-      const rho = Math.min(edge, w * 0.9, t * 0.45);
-      o = t - crown * 0.25 * t * q * q - cornerDrop(ax, w, rho);
+      const r = Math.min(edge, w * 0.9, t * 0.45);
+      o = t - crown * 0.25 * t * q * q - cornerDrop(ax, w, r);
       i = cornerDrop(ax, w, ri);
       break;
     }
@@ -98,9 +138,22 @@ export function profileAt(type, x, w, t, crown, edge, out = _po) {
       o = hs + (t - hs) * arc;
       break;
     }
+    case 'lens': {
+      const hi = t * (0.25 + 0.2 * crown);
+      i = hi * q * q;
+      o = hi + (t - hi) * arc;
+      break;
+    }
     case 'round': {
       o = t / 2 + (t / 2) * arc;
       i = t / 2 - (t / 2) * arc;
+      break;
+    }
+    case 'cushion': {
+      const n = 2.4 + 4 * crown;
+      const s = Math.pow(Math.max(0, 1 - Math.pow(aq, n)), 1 / n);
+      o = t / 2 + (t / 2) * s;
+      i = t / 2 - (t / 2) * s;
       break;
     }
     case 'knife': {
@@ -121,10 +174,45 @@ export function profileAt(type, x, w, t, crown, edge, out = _po) {
     }
     case 'concave': {
       const dep = t * (0.08 + 0.3 * crown);
-      const rho = Math.min(edge, w * 0.5, t * 0.3);
       const b = 1 - q * q;
       o = t - dep * b * b - cornerDrop(ax, w, rho);
       i = cornerDrop(ax, w, ri);
+      break;
+    }
+    case 'step': {         // erhöhte Mittelbahn
+      const c = w * (0.3 + 0.4 * crown), hs = t * 0.62, e = Math.max(0.12, w * 0.06);
+      o = hs + (t - hs) * sm((c - ax) / e + 0.5) - cornerDrop(ax, w, rho * 0.7);
+      i = cornerDrop(ax, w, ri);
+      break;
+    }
+    case 'channel': {      // erhöhte Ränder, vertiefte Mitte
+      const r = w * 0.3, dep = t * (0.14 + 0.32 * crown), e = Math.max(0.12, w * 0.06);
+      o = t - dep * sm((w - r - ax) / e + 0.5) - cornerDrop(ax, w, rho * 0.7);
+      i = cornerDrop(ax, w, ri);
+      break;
+    }
+    case 'bead': {         // flach mit Mittelwulst
+      const c = w * (0.22 + 0.3 * crown), hs = t * 0.6;
+      o = (ax < c ? hs + (t - hs) * Math.sqrt(1 - (ax / c) * (ax / c)) : hs) - cornerDrop(ax, w, rho * 0.7);
+      i = cornerDrop(ax, w, ri);
+      break;
+    }
+    case 'double': {       // zwei Wülste nebeneinander
+      const u = (ax - w / 2) / (w / 2), dep = 0.25 + 0.55 * crown;
+      o = t * (1 - dep * (1 - Math.sqrt(Math.max(0, 1 - u * u))));
+      i = cornerDrop(ax, w, Math.min(ri, t * (1 - dep) * 0.8));
+      break;
+    }
+    case 'triple': {       // drei Wülste
+      const u = ax < w / 3 ? ax / (w / 3) : (ax - 2 * w / 3) / (w / 3), dep = 0.25 + 0.5 * crown;
+      o = t * (1 - dep * (1 - Math.sqrt(Math.max(0, 1 - u * u))));
+      i = cornerDrop(ax, w, Math.min(ri, t * (1 - dep) * 0.8));
+      break;
+    }
+    case 'slant': {        // Pultprofil: eine Seite hoch, eine niedrig
+      const lo = t * (1 - 0.65 * crown);
+      o = lo + (t - lo) * (q + 1) / 2 - cornerDrop(ax, w, Math.min(rho, lo * 0.6));
+      i = cornerDrop(ax, w, Math.min(ri, lo * 0.5));
       break;
     }
     case 'd':
@@ -144,17 +232,19 @@ const FACE = {
   oval: { m: 2, tau: 0.8 },
   cushion: { m: 3.6, tau: 0.86 },
   square: { m: 8, tau: 0.92 },
+  navette: { m: 1.25, tau: 0.62 },
 };
 const SHOULDER = 2.5; // Winkel (rad), bis zu dem die Schultern auslaufen
 const DOME_E = 0.62;  // <1: Flanken des Kopfes fallen gerader ab
 const BETA_E = 2.4;   // sorgt für weichen Auslauf der Schultern
 
 const dome = (q, m) => Math.pow(Math.max(0, 1 - Math.pow(Math.abs(q), m)), DOME_E);
+const tri = (x) => { const f = x - Math.floor(x); return f < 0.5 ? 2 * f : 2 - 2 * f; }; // 0..1..0
 
 function derive(p) {
   const Rin = innerRadius(p);
   const wb = p.width / 2, tb = p.thickness;
-  const d = { Rin, wb, tb, head: false, table: false };
+  const d = { Rin, wb, tb, head: false, table: false, open: p.closure !== 'closed', spiral: p.closure === 'spiral' };
   if (p.form === 'signet' || p.form === 'bombe') {
     const f = FACE[p.faceShape] || FACE.oval;
     const Ttop = Math.max(p.headHeight, tb + 0.2);
@@ -172,7 +262,7 @@ function derive(p) {
       if (need > tbo + (Tpeak - tbo) * 0.94) Tpeak = tbo + (need - tbo) / 0.94;
       betaL = (need - tbo) / (Tpeak - tbo);
     } else {
-      d.m = 2;
+      d.m = p.faceShape === 'navette' ? 1.5 : 2;
       Tpeak = Ttop;
       d.Wtop = Math.max(wb, p.faceAlong / 2);
       aL = Math.atan2(p.faceAcross / 2, Rin + Ttop);
@@ -181,45 +271,95 @@ function derive(p) {
     aL = Math.min(aL, SHOULDER * 0.75);
     betaL = Math.min(0.94, Math.max(0.05, betaL));
     d.Tpeak = Tpeak;
-    // beta(a) = (1 - u^e1)^BETA_E mit u = |a| / SHOULDER, durch (aL, betaL)
     const e1 = Math.log(1 - Math.pow(betaL, 1 / BETA_E)) / Math.log(aL / SHOULDER);
     d.e1 = Math.min(9, Math.max(1.25, e1));
   }
+  // Öffnung: bei schlichten Ringen oben, bei Ringen mit Kopf/Verlauf unten
+  const Rmid = Rin + tb / 2;
+  if (d.spiral) {
+    d.span = p.turns * TAU;
+    d.th0 = Math.PI - d.span / 2;
+    d.pitch = p.width + p.spiralPitch;
+  } else if (d.open) {
+    const g = Math.min(p.gap / Rmid, 2.2);
+    const center = p.form === 'band' ? 0 : Math.PI;
+    d.span = TAU - g;
+    d.th0 = center + g / 2;
+  }
+  d.len = d.open ? d.span * Rmid : TAU * Rmid;
+  d.endR = Math.max(wb, tb / 2);
+  d.twist = d.head ? 0 : p.twist;
+  d.lift = d.twist ? Math.max(0, Math.hypot(wb, tb / 2) - tb / 2) : 0;
   return d;
 }
 
-const _col = { w: 0, t: 0, beta: 0, x0: 0, wHead: 0 };
-function columnAt(p, d, a, out = _col) {
-  let w = d.wb, t = d.tb, beta = 0, x0 = 0;
+// Größen einer „Spalte“ (Querschnitt an einer Stelle des Umlaufs)
+function colAt(p, d, tt, c) {
+  const theta = d.open ? d.th0 + tt * d.span : -Math.PI + tt * TAU;
+  const a = theta - TAU * Math.round(theta / TAU);
   const aa = Math.abs(a);
+  let w = d.wb, t = d.tb, beta = 0, x0 = 0, e = 1;
   if (p.form === 'taper') {
-    const c = Math.pow(0.5 + 0.5 * Math.cos(a), 1.6);
-    w = d.wb + (p.taperWidth / 2 - d.wb) * c;
-    t = d.tb + (p.taperThickness - d.tb) * c;
+    const k = Math.pow(0.5 + 0.5 * Math.cos(a), 1.6);
+    w = d.wb + (p.taperWidth / 2 - d.wb) * k;
+    t = d.tb + (p.taperThickness - d.tb) * k;
   } else if (d.head) {
     if (aa < SHOULDER) beta = Math.pow(1 - Math.pow(aa / SHOULDER, d.e1), BETA_E);
     w = d.wb + (d.Wtop - d.wb) * Math.pow(beta, 0.85);
-  } else if (p.form === 'wave') {
-    x0 = p.waveAmp * Math.cos(p.waveCount * a);
-  } else if (p.form === 'vee') {
-    const s = p.veeSpread;
-    x0 = p.veeDepth * Math.exp(-(Math.sqrt(a * a + 0.02) - 0.1414) / s);
   }
-  out.w = w; out.t = t; out.beta = beta; out.x0 = x0;
-  return out;
+  const calm = 1 - beta; // am Kopf laufen Verlauf und Kantenform aus
+  if (p.path === 'wave') x0 = p.waveAmp * Math.cos(p.waveCount * theta) * calm;
+  else if (p.path === 'zigzag') {
+    const z = tri(p.waveCount * theta / TAU + 0.5) * 2 - 1;
+    x0 = p.waveAmp * (Math.sign(z) * (1 - Math.pow(1 - Math.abs(z), 1.6))) * calm;
+  } else if (p.path === 'vee') x0 = p.veeDepth * Math.exp(-(Math.sqrt(a * a + 0.02) - 0.1414) / p.veeSpread) * calm;
+  if (d.spiral) x0 += d.pitch * (tt - 0.5) * p.turns;
+
+  let wL = w, wR = w;
+  if (p.contour === 'scallop') {
+    const k = p.contourAmp * 0.5 * (1 - Math.abs(Math.cos(p.contourCount * theta / 2))) * 2 * calm;
+    wL = Math.max(0.3, w - k); wR = wL;
+  } else if (p.contour === 'crown') {
+    wR = w + p.contourAmp * 1.6 * Math.pow(tri(p.contourCount * theta / TAU), 1.2) * calm;
+  }
+  if (d.open) {
+    const dist = Math.min(tt, 1 - tt) * d.len, r = d.endR;
+    if (p.endStyle === 'round') { if (dist < r) e = Math.sqrt(Math.max(0, 1 - (1 - dist / r) * (1 - dist / r))); }
+    else if (p.endStyle === 'ball') {
+      const rb = r * 1.75;
+      if (dist < 2 * rb) {
+        const eb = Math.sqrt(Math.max(0, 1 - ((dist - rb) / rb) * ((dist - rb) / rb))) * 1.75;
+        e = dist < rb ? eb : Math.max(eb, 1);
+      }
+    } else if (p.endStyle === 'point') {
+      const L = Math.min(d.len * 0.3, 16);
+      if (dist < L) e = Math.pow(dist / L, 0.75);
+    }
+    e = Math.max(e, 0.04);
+  }
+  c.theta = theta; c.a = a; c.w = w; c.wL = wL; c.wR = wR; c.t = t; c.beta = beta; c.x0 = x0; c.e = e;
+  return c;
 }
+const newCol = () => ({ theta: 0, a: 0, w: 0, wL: 0, wR: 0, t: 0, beta: 0, x0: 0, e: 1 });
 
 // Axiale Ausdehnung je Winkel – für passgenaues Stapeln.
 export const EXTENT_STEPS = 72;
 export function ringExtents(p0) {
   const p = normalize(p0), d = derive(p);
-  const lo = new Float32Array(EXTENT_STEPS), hi = new Float32Array(EXTENT_STEPS);
-  for (let k = 0; k < EXTENT_STEPS; k++) {
-    const a = -Math.PI + (k / EXTENT_STEPS) * TAU;
-    const c = columnAt(p, d, a);
-    lo[k] = c.x0 - c.w; hi[k] = c.x0 + c.w;
+  const lo = new Float32Array(EXTENT_STEPS).fill(Infinity), hi = new Float32Array(EXTENT_STEPS).fill(-Infinity);
+  const n = Math.ceil(EXTENT_STEPS * 3 * (d.spiral ? p.turns : 1)), c = newCol();
+  const grow = d.twist ? Math.hypot(d.wb, d.tb / 2) - d.wb : 0;
+  let min = Infinity, max = -Infinity;
+  for (let k = 0; k <= n; k++) {
+    colAt(p, d, Math.min(k / n, 0.99999), c);
+    const b = Math.min(EXTENT_STEPS - 1, Math.floor((c.a + Math.PI) / TAU * EXTENT_STEPS));
+    const l = c.x0 - c.wL * Math.max(c.e, 0.2) - grow, h = c.x0 + c.wR * Math.max(c.e, 0.2) + grow;
+    if (l < lo[b]) lo[b] = l;
+    if (h > hi[b]) hi[b] = h;
+    if (l < min) min = l;
+    if (h > max) max = h;
   }
-  return { lo, hi };
+  return { lo, hi, min, max };
 }
 
 // ------------------------------------------------------------ Oberflächen
@@ -247,6 +387,15 @@ function hammer(s, x, C, cell) {
   return Math.max(0, 1 - best / 0.55); // 1 in der Mulde, 0 am Grat
 }
 
+// weiches Rauschen, in u nahtlos über n Zellen
+function vnoise(u, v, n) {
+  const iu = Math.floor(u), iv = Math.floor(v), fu = u - iu, fv = v - iv;
+  const su = fu * fu * (3 - 2 * fu), sv = fv * fv * (3 - 2 * fv);
+  const w0 = ((iu % n) + n) % n, w1 = (w0 + 1) % n;
+  const a = hash2(w0, iv), b = hash2(w1, iv), c = hash2(w0, iv + 1), e = hash2(w1, iv + 1);
+  return (a + (b - a) * su) * (1 - sv) + (c + (e - c) * su) * sv;
+}
+
 function sampleMap(map, u, v) {
   if (!map || u < 0 || u > 1 || v < 0 || v > 1) return 0;
   const x = u * (map.w - 1), y = v * (map.h - 1);
@@ -257,8 +406,9 @@ function sampleMap(map, u, v) {
     (d[y1 * w + x0] * (1 - fx) + d[y1 * w + x1] * fx) * fy) / 255;
 }
 
+const FINE = ['milgrain', 'hammered', 'rope', 'knurl', 'dots', 'pyramids', 'bark', 'scales', 'ribs', 'waves', 'diagonal'];
 export function needsDetail(p) {
-  return ['milgrain', 'hammered', 'rope', 'knurl'].includes(p.pattern) ||
+  return FINE.includes(p.pattern) || p.twist > 0 || p.contour !== 'none' ||
     !!(p.textOuter || p.textInner || (p.textTable && p.form === 'signet'));
 }
 
@@ -269,39 +419,46 @@ export function buildRing(p0, opts = {}) {
   const d = derive(p);
   const maps = opts.maps || {};
   const exportQ = opts.quality === 'export';
+  const light = opts.quality === 'light'; // für Ansichten mit mehreren Ringen
   const detail = needsDetail(p);
   const hasInnerText = !!(p.textInner && maps.inner);
   const hasTableText = !!(p.textTable && maps.table && d.table);
 
-  const light = opts.quality === 'light'; // für Ansichten mit mehreren Ringen
-  const nU = exportQ ? (detail ? 1040 : 520) : light ? (detail ? 400 : 220) : (detail ? 600 : 340);
+  let nU = exportQ ? (detail ? 1040 : 520) : light ? (detail ? 400 : 220) : (detail ? 600 : 340);
+  if (d.spiral) nU = Math.round(nU * Math.min(3, Math.max(1, p.turns * 0.8)));
   const nO = exportQ ? (detail ? 132 : 64) : light ? (detail ? 56 : 32) : (detail ? 84 : 48);
-  const nI = hasInnerText ? nO : (exportQ ? 32 : 22);
+  const nI = hasInnerText || d.twist ? nO : (exportQ ? 32 : 22);
   const nS = 3;
   const nV = nO + nI + 2 * nS;
+  const open = d.open;
+  const nVert = nU * nV + (open ? 2 : 0);
 
   const { Rin, wb, tb } = d;
   const Cout = TAU * (Rin + tb);
   const warp = d.head ? (hasTableText ? 0.72 : 0.55) : 0;
 
-  const pos = new Float32Array(nU * nV * 3);
+  const pos = new Float32Array(nVert * 3);
+  const zone = new Uint8Array(nVert); // 1 = Zweitmetall
   const pat = p.pattern;
   const pd = Math.min(p.patternDepth, tb * 0.45);
   const sc = p.patternScale;
   const td = Math.min(p.textDepth, tb * 0.5) * (p.textRaised ? 1 : -1);
   const tdIn = Math.min(p.textDepth, tb * 0.4);
-  const facetN = Math.max(5, p.patternCount + 4);
-  const fluteN = Math.max(6, Math.round(Cout / (1.8 / sc)));
-  const ropeN = Math.max(6, Math.round(Cout / (2.2 / sc)));
-  const knurlN = Math.max(8, Math.round(Cout / (1.5 / sc)));
+  const around = (pitch) => Math.max(6, Math.round(Cout / (pitch / sc)));
+  const fluteN = around(1.8), ropeN = around(2.2), knurlN = around(1.5), ribN = around(0.9);
+  const dotN = around(1.5), pyrN = around(1.6), scaleN = around(2.0), diagN = around(1.6), waveN = Math.max(3, Math.round(around(5) / 1));
   const beadN = Math.max(8, Math.round(Cout / (Math.max(p.width, 1.6) * 1.05 / sc)));
+  const barkN = around(0.9);
   const mgR = Math.min(Math.max(0.22, pd * 1.2), wb * 0.4);
   const mgN = Math.max(12, Math.round(Cout / (2 * mgR)));
   const grooveG = Math.max(0.16, pd * 0.8);
   const tabW = p.faceAcross * 0.8, tabH = p.faceAlong * 0.8;
+  const polyN = p.outlineSides, polyOn = p.outline === 'poly';
+  const polyMax = 1 / Math.cos(Math.PI / polyN) - 1;
+  const inlay = p.inlay, iw = p.inlayWidth;
 
   let minWall = Infinity, maxR = 0, zLo = Infinity, zHi = -Infinity;
-  const po = [0, 0], col = { w: 0, t: 0, beta: 0, x0: 0 };
+  const po = [0, 0], col = newCol();
 
   // Verteilung der Profilpunkte (an den Kanten dichter)
   const qs = new Float32Array(nO), qi = new Float32Array(nI);
@@ -315,33 +472,45 @@ export function buildRing(p0, opts = {}) {
   }
 
   for (let iu = 0; iu < nU; iu++) {
-    const v = -1 + 2 * iu / nU;
-    const a = Math.PI * ((1 - warp) * v + warp * v * v * v);
+    let tt;
+    if (open) {
+      const s = iu / (nU - 1);
+      tt = 0.55 * s + 0.45 * (0.5 - 0.5 * Math.cos(Math.PI * s)); // an den Enden dichter
+    } else {
+      const v = -1 + 2 * iu / nU;
+      tt = 0.5 + 0.5 * ((1 - warp) * v + warp * v * v * v);
+    }
+    colAt(p, d, tt, col);
+    const a = col.a, theta = col.theta;
     const sinA = Math.sin(a), cosA = Math.cos(a);
-    columnAt(p, d, a, col);
-    let w = col.w, t = col.t;
-    const beta = col.beta, x0 = col.x0;
+    let w = col.w, wL = col.wL, wR = col.wR;
+    const t = col.t, beta = col.beta, x0 = col.x0, e = col.e;
     const fade = beta <= 0.02 ? 1 : beta >= 0.3 ? 0 : 1 - (beta - 0.02) / 0.28;
-    const s = (a + Math.PI) * (Rin + tb);
+    const s = (theta + Math.PI) * (Rin + tb);
     const ua = (a + Math.PI) / TAU;
+    const uu = (theta + Math.PI) / TAU; // läuft bei Spiralen über 1 hinaus
 
     let bead = 1;
     if (pat === 'beads') {
-      const f = (ua * beadN) % 1, c = 2 * f - 1;
+      const f = (((uu * beadN) % 1) + 1) % 1, c = 2 * f - 1;
       bead = 0.5 + 0.5 * Math.sqrt(Math.max(0, 1 - c * c));
       bead = 1 - (1 - bead) * fade;
-      w *= 0.62 + 0.38 * bead;
+      const k = 0.62 + 0.38 * bead;
+      w *= k; wL *= k; wR *= k;
     }
-    let facet = 0;
-    if (pat === 'facets') {
-      const seg = TAU / facetN;
-      const l = ((a % seg) + seg) % seg - seg / 2;
-      facet = Math.cos(Math.PI / facetN) / Math.cos(l) - 1; // ≤ 0
+    let poly = 0;
+    if (polyOn) {
+      const seg = TAU / polyN;
+      const l = ((a + seg / 2) % seg + seg) % seg - seg / 2;
+      poly = Math.min(1 / Math.cos(l) - 1, polyMax * (1 - 0.7 * p.outlineSoft)) * (Rin + tb) * fade;
     }
+    const cH = t / 2;
+    const phi = d.twist ? d.twist * theta : 0;
+    const cosP = Math.cos(phi), sinP = Math.sin(phi);
+    const shaped = e !== 1 || d.twist;
 
     const heights = (q) => {
-      const x = q * w;
-      profileAt(p.profile, x, w, t, p.crown, p.edge, po);
+      profileAt(p.profile, q * w, w, t, p.crown, p.edge, po);
       let o = po[0], i = po[1];
       if (beta > 0) {
         o = (1 - beta) * o + beta * (d.hs + (d.Tpeak - d.hs) * dome(q, d.m));
@@ -351,22 +520,37 @@ export function buildRing(p0, opts = {}) {
         const mid = t / 2;
         o = mid + (o - mid) * bead; i = mid - (mid - i) * bead;
       }
-      po[0] = o; po[1] = i;
+      po[0] = o + poly; po[1] = i;
     };
 
-    const put = (j, x, h, clampable) => {
-      const r = Rin + h;
-      let X = r * sinA, Y = r * cosA;
-      const k = (iu * nV + j) * 3;
-      if (clampable && d.table && cosA > 0 && Y > d.H) {
-        Y = d.H;
-        if (hasTableText) {
-          Y -= tdIn * sampleMap(maps.table, 0.5 + X / tabW, 0.5 + x / tabH);
-        }
+    const put = (j, q, h, kind) => { // kind: 0 außen, 1 Flanke, 2 innen
+      let x = q * (q < 0 ? wL : wR);
+      if (shaped) {
+        let dx = x * e, dh = (h - cH) * e;
+        if (d.twist) { const nx = dx * cosP - dh * sinP; dh = dx * sinP + dh * cosP; dx = nx; }
+        x = dx; h = cH + d.lift + dh;
       }
-      pos[k] = X; pos[k + 1] = Y; pos[k + 2] = x0 + x;
+      const r = Rin + h;
+      const X = r * sinA;
+      let Y = r * cosA;
+      const k = iu * nV + j;
+      if (kind !== 2 && d.table && cosA > 0 && Y > d.H) {
+        Y = d.H;
+        if (hasTableText) Y -= tdIn * sampleMap(maps.table, 0.5 + X / tabW, 0.5 + x / tabH);
+      }
+      pos[k * 3] = X; pos[k * 3 + 1] = Y; pos[k * 3 + 2] = x0 + x;
       const rr = X * X + Y * Y;
       if (rr > maxR) maxR = rr;
+      if (x0 + x < zLo) zLo = x0 + x;
+      if (x0 + x > zHi) zHi = x0 + x;
+      if (inlay !== 'none') {
+        const aq = Math.abs(q);
+        zone[k] = inlay === 'center' ? (kind === 0 && aq < iw ? 1 : 0)
+          : inlay === 'edges' ? (kind !== 2 && aq > 1 - iw ? 1 : 0)
+            : inlay === 'half' ? (q > 0 ? 1 : 0)
+              : inlay === 'inside' ? (kind === 2 || (kind === 1 && h < t * 0.5) ? 1 : 0)
+                : inlay === 'head' ? (beta > 0.45 ? 1 : 0) : 0;
+      }
     };
 
     let oL = 0, iL = 0, oR = 0, iR = 0;
@@ -378,67 +562,98 @@ export function buildRing(p0, opts = {}) {
       const i = po[1];
       if (fade > 0) {
         let dsp = 0;
-        switch (pat) {
+        const aq = Math.abs(q);
+        const zw = p.patternZone === 'center' ? 1 - sm((aq - 0.42) / 0.12) : p.patternZone === 'edges' ? sm((aq - 0.46) / 0.12) : 1;
+        if (zw > 0) switch (pat) {
           case 'grooves': {
             const n = Math.min(p.patternCount, 7);
             for (let g = 1; g <= n; g++) {
-              const xg = (-1 + 2 * g / (n + 1)) * w, e = (x - xg) / grooveG;
-              dsp -= pd * Math.exp(-e * e);
+              const xg = (-1 + 2 * g / (n + 1)) * w, ee = (x - xg) / grooveG;
+              dsp -= pd * Math.exp(-ee * ee);
             }
             break;
           }
-          case 'flutes': dsp = -pd * (0.5 - 0.5 * Math.cos(fluteN * a)); break;
+          case 'flutes': dsp = -pd * (0.5 - 0.5 * Math.cos(fluteN * theta)); break;
+          case 'ribs': dsp = -pd * tri(ribN * uu); break;
+          case 'diagonal': dsp = -pd * Math.pow(0.5 + 0.5 * Math.cos(diagN * theta + x * 2.4 * sc), 3); break;
+          case 'waves': {
+            const ph = (x + 0.45 * Math.sin(waveN * theta)) * 5.2 * sc;
+            dsp = -pd * Math.pow(0.5 + 0.5 * Math.cos(ph), 4);
+            break;
+          }
           case 'milgrain': {
             const dx = (Math.abs(x) - (w - mgR * 1.15)) / mgR;
-            const ds = ((ua * mgN) % 1) * 2 - 1;
+            const ds = ((((uu * mgN) % 1) + 1) % 1) * 2 - 1;
             const b = 1 - dx * dx - ds * ds;
             if (b > 0) dsp = mgR * 0.75 * Math.sqrt(b);
             else if (dx < -1 && dx > -1.9) dsp = -mgR * 0.35 * Math.sin((dx + 1.9) / 0.9 * Math.PI);
             break;
           }
           case 'hammered': dsp = -pd * hammer(s, x + 40, Cout, 1.7 / sc); break;
-          case 'rope': dsp = pd * 1.6 * (Math.sqrt(Math.abs(Math.sin(ropeN * a / 2 + q * 1.1))) - 1); break;
+          case 'bark': {
+            const u1 = uu * barkN, v1 = (x + 40) * 0.28 * sc;
+            const n1 = vnoise(u1, v1, barkN) * 0.6 + vnoise(u1 * 2, v1 * 2.3 + 9, barkN * 2) * 0.28 + vnoise(u1 * 4, v1 * 5 + 3, barkN * 4) * 0.12;
+            dsp = -pd * 1.5 * Math.abs(n1 - 0.5) * 2;
+            break;
+          }
+          case 'rope': dsp = pd * 1.6 * (Math.sqrt(Math.abs(Math.sin(ropeN * theta / 2 + q * 1.1))) - 1); break;
           case 'knurl': {
-            const k1 = Math.max(0, Math.cos(knurlN * a + q * w * 2.2 * sc));
-            const k2 = Math.max(0, Math.cos(knurlN * a - q * w * 2.2 * sc));
+            const k1 = Math.max(0, Math.cos(knurlN * theta + q * w * 2.2 * sc));
+            const k2 = Math.max(0, Math.cos(knurlN * theta - q * w * 2.2 * sc));
             dsp = -pd * Math.pow(Math.max(k1, k2), 5);
             break;
           }
-          case 'facets': dsp = (Rin + o) * facet; break;
+          case 'dots': {
+            const cw = Cout / dotN, row = Math.round(x / (cw * 0.87));
+            const fu = uu * dotN + (row & 1 ? 0.5 : 0), du = (fu - Math.round(fu)) * cw, dv = x - row * cw * 0.87;
+            const rr = (du * du + dv * dv) / (cw * cw * 0.1);
+            if (rr < 1 && Math.abs(row * cw * 0.87) < w - cw * 0.3) dsp = -pd * (1 - rr) * (1 - rr);
+            break;
+          }
+          case 'pyramids': {
+            const cw = Cout / pyrN;
+            const fu = uu * pyrN, fv = x / cw + 0.5;
+            const du = Math.abs(fu - Math.floor(fu) - 0.5) * 2, dv = Math.abs(fv - Math.floor(fv) - 0.5) * 2;
+            dsp = -pd * 1.4 * Math.max(du, dv);
+            break;
+          }
+          case 'scales': {
+            const cw = Cout / scaleN, rowH = cw * 0.55;
+            let best = 0;
+            for (let dr = 0; dr <= 1; dr++) {
+              const row = Math.floor(x / rowH) + dr;
+              const fu = uu * scaleN + (row & 1 ? 0.5 : 0), du = (fu - Math.round(fu)) * cw, dv = row * rowH - x;
+              const k = 1 - (du * du + dv * dv * 0.55) / (cw * cw * 0.3);
+              if (k > best) best = k * (0.35 + 0.65 * (dv / rowH));
+            }
+            dsp = -pd * 1.3 * (1 - Math.min(1, Math.max(0, best) * 1.6));
+            break;
+          }
         }
+        dsp *= zw;
         if (maps.outer && p.textOuter) dsp += td * sampleMap(maps.outer, ua, 0.5 - q * 0.5);
         o += dsp * fade;
       }
       if (o < i + 0.06) o = i + 0.06;
       if (o - i < minWall && Math.abs(q) < 0.6) minWall = o - i;
       if (j === 0) { oL = o; iL = i; } else if (j === nO - 1) { oR = o; iR = i; }
-      put(j, x, o, true);
+      put(j, q, o, 0);
     }
-    // rechte Flanke
-    for (let j = 0; j < nS; j++) {
-      const f = (j + 1) / (nS + 1);
-      put(nO + j, w, oR + (iR - oR) * f, true);
-    }
-    // Innenfläche
+    for (let j = 0; j < nS; j++) put(nO + j, 1, oR + (iR - oR) * (j + 1) / (nS + 1), 1);
     for (let j = 0; j < nI; j++) {
       const q = qi[j];
       heights(q);
       let i = po[1];
       if (hasInnerText) i += tdIn * sampleMap(maps.inner, ua, 0.5 - q * 0.5);
-      put(nO + nS + j, q * w, i, false);
+      put(nO + nS + j, q, i, 2);
     }
-    // linke Flanke
-    for (let j = 0; j < nS; j++) {
-      const f = (j + 1) / (nS + 1);
-      put(nO + nS + nI + j, -w, iL + (oL - iL) * f, true);
-    }
-    if (x0 - w < zLo) zLo = x0 - w;
-    if (x0 + w > zHi) zHi = x0 + w;
+    for (let j = 0; j < nS; j++) put(nO + nS + nI + j, -1, iL + (oL - iL) * (j + 1) / (nS + 1), 1);
   }
 
-  const idx = new Uint32Array(nU * nV * 6);
+  const rows = open ? nU - 1 : nU;
+  const idx = new Uint32Array(rows * nV * 6 + (open ? nV * 6 : 0));
   let n = 0;
-  for (let iu = 0; iu < nU; iu++) {
+  for (let iu = 0; iu < rows; iu++) {
     const i2 = (iu + 1) % nU;
     for (let j = 0; j < nV; j++) {
       const j2 = (j + 1) % nV;
@@ -447,9 +662,23 @@ export function buildRing(p0, opts = {}) {
       idx[n++] = B; idx[n++] = D; idx[n++] = C;
     }
   }
+  if (open) { // Enden verschließen
+    for (let end = 0; end < 2; end++) {
+      const base = end ? (nU - 1) * nV : 0, cI = nU * nV + end;
+      let cx = 0, cy = 0, cz = 0;
+      for (let j = 0; j < nV; j++) { cx += pos[(base + j) * 3]; cy += pos[(base + j) * 3 + 1]; cz += pos[(base + j) * 3 + 2]; }
+      pos[cI * 3] = cx / nV; pos[cI * 3 + 1] = cy / nV; pos[cI * 3 + 2] = cz / nV;
+      zone[cI] = zone[base];
+      for (let j = 0; j < nV; j++) {
+        const j2 = (j + 1) % nV;
+        if (end) { idx[n++] = cI; idx[n++] = base + j; idx[n++] = base + j2; }
+        else { idx[n++] = cI; idx[n++] = base + j2; idx[n++] = base + j; }
+      }
+    }
+  }
 
   return {
-    positions: pos, indices: idx, nU, nV,
+    positions: pos, indices: idx, zone: inlay !== 'none' ? zone : null, nU, nV,
     stats: {
       innerDiameter: 2 * Rin,
       outerDiameter: 2 * Math.sqrt(maxR),

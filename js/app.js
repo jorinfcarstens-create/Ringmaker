@@ -1,5 +1,5 @@
 import { DEFAULTS, normalize, profileAt, sizeToDiameter, sizeToUS } from './ring.js';
-import { MATERIALS, FINISHES, FORMS, PROFILES, PATTERNS, FACES } from './catalog.js';
+import { MATERIALS, MATERIAL_GROUPS, FINISHES, FORMS, PROFILES, PATTERNS, FACES, PATHS, CLOSURES, ENDS, OUTLINES, CONTOURS, ZONES, INLAYS } from './catalog.js';
 import { FONTS } from './text.js';
 import { Viewer } from './viewer.js';
 import { db, persist, saveRing, deleteRing, getRing, deliver, ringFile, backupFile, parseImport, stlFile } from './store.js';
@@ -87,7 +87,7 @@ function pump() {
 const ringKey = (r) => r.id + ':' + r.updated;
 
 // ============================================================ Werkbank
-const SEGS = { form: 'Form', size: 'Maße', profile: 'Profil', surface: 'Oberfläche', text: 'Gravur', material: 'Material' };
+const SEGS = { form: 'Form', rail: 'Schiene', profile: 'Profil', size: 'Maße', material: 'Material', surface: 'Struktur', text: 'Gravur' };
 
 let rafPending = false, saveTimer;
 function changed({ refit = false, rerender = false } = {}) {
@@ -121,7 +121,7 @@ function renderStats() {
   const thin = s.minWall < 0.8;
   $('#bench-stats').innerHTML =
     `<b>Größe ${fmt(p.size, 0)}</b> · Ø ${fmt(s.innerDiameter)} mm<br>` +
-    `${fmt(weight())} g ${MATERIALS[p.material].label}` +
+    `${fmt(weight())} g ${(MATERIALS[p.material] || MATERIALS.gold).label}` +
     (thin ? `<br><span class="warn">Dünnste Stelle ${fmt(s.minWall, 2)} mm</span>` : '');
   const facts = $('#facts');
   if (facts) facts.replaceWith(factsBlock());
@@ -192,15 +192,25 @@ function profileIcon(type) {
   return svg('0 0 7 3.8', d);
 }
 const ring = 'M22 16m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0Z';
-const FORM_ICONS = {
-  band: ['0 0 44 30', 'M22 15m-12.500 0a12.500 12.500 0 1 0 25 0a12.500 12.500 0 1 0-25 0ZM22 15m-9.500 0a9.500 9.500 0 1 0 19 0a9.500 9.500 0 1 0-19 0Z'],
-  taper: ['0 0 44 30', 'M22 14m-13.500 0a13.500 13.500 0 1 0 27 0a13.500 13.500 0 1 0-27 0Z' + ring],
+const ICONS = {
+  band: ['0 0 44 30', 'M22 15m-12.5 0a12.5 12.5 0 1 0 25 0a12.5 12.5 0 1 0-25 0ZM22 15m-9.5 0a9.5 9.5 0 1 0 19 0a9.5 9.5 0 1 0-19 0Z'],
+  taper: ['0 0 44 30', 'M22 14m-13.5 0a13.5 13.5 0 1 0 27 0a13.5 13.5 0 1 0-27 0Z' + ring],
   signet: ['0 0 44 30', 'M13 2h18l5 8a14 14 0 1 1-28 0Z' + ring],
-  bombe: ['0 0 44 30', 'M22 1c9 0 15 6 15 14a15 13.500 0 1 1-30 0c0-8 6-14 15-14Z' + ring],
+  bombe: ['0 0 44 30', 'M22 1c9 0 15 6 15 14a15 13.5 0 1 1-30 0c0-8 6-14 15-14Z' + ring],
+  straight: ['0 0 44 30', 'M4 15h36', 'line'],
   wave: ['0 0 44 30', 'M3 15c5-9 8-9 13 0s8 9 13 0 8-9 12 0', 'line'],
+  zigzag: ['0 0 44 30', 'M3 20l8-10 8 10 8-10 8 10 6-8', 'line'],
   vee: ['0 0 44 30', 'M4 8l18 14L40 8', 'line'],
+  closed: ['0 0 44 30', 'M22 15m-11 0a11 11 0 1 0 22 0a11 11 0 1 0-22 0', 'line'],
+  open: ['0 0 44 30', 'M27 5.2A11 11 0 1 1 17 5.2', 'line'],
+  spiral: ['0 0 44 30', 'M8 9c8-5 22-5 28 0M8 15c8-5 22-5 28 0M8 21c8-5 22-5 28 0', 'line'],
+  round: ['0 0 44 30', 'M22 15m-11 0a11 11 0 1 0 22 0a11 11 0 1 0-22 0', 'line'],
+  poly: ['0 0 44 30', 'M17 4h10l7 7v8l-7 7H17l-7-7v-8Z', 'line'],
+  none: ['0 0 44 30', 'M4 9h36M4 21h36', 'line'],
+  scallop: ['0 0 44 30', 'M4 10q4-5 8 0t8 0 8 0 8 0M4 20q4 5 8 0t8 0 8 0 8 0', 'line'],
+  crown: ['0 0 44 30', 'M4 11l4.500-6 4.500 6 4.500-6 4.500 6 4.500-6 4.500 6 4.500-6 4.500 6M4 21h36', 'line'],
 };
-const formIcon = (f) => svg(...FORM_ICONS[f]);
+const icon = (k) => svg(...ICONS[k]);
 
 function renderSegs() {
   const nav = $('#segs');
@@ -208,38 +218,62 @@ function renderSegs() {
     h('button', { type: 'button', role: 'tab', 'aria-selected': String(cur.seg === id), onclick: () => { cur.seg = id; renderSegs(); renderControls(); $('#controls').scrollTop = 0; } }, label)));
 }
 
+const matChip = (k) => h('span', { class: 'swatch', style: `background:${hex(MATERIALS[k].color)}` });
+const matOptions = (keys) => Object.fromEntries(keys.map((k) => [k, MATERIALS[k].label + (MATERIALS[k].note ? ' ' + MATERIALS[k].note : '')]));
+
 function renderControls() {
   const p = cur.params, out = [];
   const add = (...els) => out.push(...els);
+  const head = p.form === 'signet' || p.form === 'bombe';
+  const hint = (t) => h('p', { class: 'hint' }, t);
+  const note = (t) => h('p', { class: 'note' }, t);
+  const divider = () => h('div', { class: 'divider' });
   if (cur.seg === 'form') {
-    add(chips('form', 'Grundform', FORMS, { tiles: true, icon: formIcon, refit: true }));
-    add(h('p', { class: 'hint' }, FORMS[p.form].hint + '.'));
+    add(chips('form', 'Aufbau', FORMS, { tiles: true, icon, refit: true }), hint(FORMS[p.form].hint + '.'));
+    if (p.closure === 'spiral' && p.form !== 'band') add(note('Die Spirale gibt es nur mit gleichmäßiger Schiene.'));
     if (p.form === 'taper') add(slider('taperWidth', 'Breite oben', 2, 16, 0.1), slider('taperThickness', 'Stärke oben', 1, 6, 0.1));
-    if (p.form === 'signet') add(chips('faceShape', 'Plattenform', FACES));
-    if (p.form === 'signet' || p.form === 'bombe') {
+    if (head) {
+      add(chips('faceShape', p.form === 'signet' ? 'Plattenform' : 'Kopfform', p.form === 'signet' ? FACES : { oval: 'Oval', navette: 'Navette' }));
       add(slider('faceAcross', 'Kopf quer zum Finger', 7, 24, 0.5), slider('faceAlong', 'Kopf längs zum Finger', 6, 22, 0.5), slider('headHeight', 'Kopfhöhe', 2, 8, 0.1));
     }
-    if (p.form === 'wave') add(slider('waveAmp', 'Ausschlag', 0.2, 3.5, 0.1), slider('waveCount', 'Wellen', 1, 8, 1, '', 0));
-    if (p.form === 'vee') add(slider('veeDepth', 'Tiefe der Spitze', 0.5, 7, 0.1), slider('veeSpread', 'Öffnung', 0.2, 1.1, 0.05, '', 2));
+    add(divider(), chips('outline', 'Außenkontur', OUTLINES, { tiles: true, icon }));
+    if (p.outline === 'poly') add(slider('outlineSides', 'Ecken', 3, 12, 1, '', 0), slider('outlineSoft', 'Eckenrundung', 0, 1, 0.05, '', 2));
+    add(hint('Innen bleibt der Ring immer rund. Verlauf, Öffnung und Kanten findest du unter „Schiene“.'));
+  } else if (cur.seg === 'rail') {
+    add(chips('path', 'Verlauf', PATHS, { tiles: true, icon }));
+    if (p.path === 'wave' || p.path === 'zigzag') add(slider('waveAmp', 'Ausschlag', 0.2, 3.5, 0.1), slider('waveCount', p.path === 'wave' ? 'Wellen' : 'Zacken', 1, 10, 1, '', 0));
+    if (p.path === 'vee') add(slider('veeDepth', 'Tiefe der Spitze', 0.5, 7, 0.1), slider('veeSpread', 'Öffnung', 0.2, 1.1, 0.05, '', 2));
+    add(divider(), chips('closure', 'Verschluss', CLOSURES, { tiles: true, icon, refit: true }));
+    if (p.closure !== 'closed') {
+      add(hint(CLOSURES[p.closure].hint + '.'));
+      if (p.closure === 'open') add(slider('gap', 'Öffnung', 0.5, 12, 0.5));
+      else add(slider('turns', 'Windungen', 1.1, 4.5, 0.05, '', 2), slider('spiralPitch', 'Abstand der Windungen', 0, 3, 0.1));
+      add(chips('endStyle', 'Enden', ENDS));
+    }
+    add(divider(), chips('contour', 'Kantenform', CONTOURS, { tiles: true, icon }));
+    if (p.contour !== 'none') add(slider('contourAmp', p.contour === 'crown' ? 'Höhe der Zacken' : 'Tiefe der Bögen', 0.2, 2.5, 0.1), slider('contourCount', p.contour === 'crown' ? 'Zacken' : 'Bögen', 4, 36, 1, '', 0));
+    add(divider(), slider('twist', 'Drehung des Querschnitts', 0, 12, 1, '', 0, (v) => (v ? (v === 1 ? 'Umdrehung' : 'Umdrehungen') : 'keine')));
+    add(hint(head ? 'Bei Ringen mit Kopf ist die Drehung abgeschaltet.' : 'Wirkt am stärksten mit kantigen Profilen: „Flach“ oder „Kissen“ bei gleicher Breite und Stärke ergibt den gedrehten Vierkant.'));
   } else if (cur.seg === 'size') {
     add(slider('size', 'Ringgröße (Innenumfang)', 40, 76, 0.5, 'mm', 1, (v) => 'Ø ' + fmt(sizeToDiameter(v), 1) + ' mm'),
       slider('width', p.form === 'band' ? 'Breite' : 'Breite der Schiene', 1.2, 14, 0.1),
       slider('thickness', p.form === 'band' ? 'Stärke' : 'Stärke der Schiene', 0.9, 4.5, 0.1),
       factsBlock(),
-      h('p', { class: 'hint' }, 'Größe ermitteln: einen Papierstreifen um den Finger legen und die Länge in Millimetern messen – das ist der Innenumfang.'));
+      hint('Größe ermitteln: einen Papierstreifen um den Finger legen und die Länge in Millimetern messen – das ist der Innenumfang.'));
   } else if (cur.seg === 'profile') {
     add(chips('profile', 'Querschnitt', PROFILES, { tiles: true, icon: profileIcon }));
-    add(h('p', { class: 'hint' }, PROFILES[p.profile].hint + '.'));
-    const crownLabel = { flat: 'Wölbung', d: 'Wölbung', comfort: 'Wölbung', knife: 'Steilheit', bevel: 'Breite der Fase', concave: 'Tiefe der Kehle' }[p.profile];
-    if (crownLabel) add(slider('crown', crownLabel, 0, 1, 0.05, '', 2));
-    if (['flat', 'bevel', 'concave', 'd', 'knife'].includes(p.profile)) add(slider('edge', 'Kantenrundung', 0, 1, 0.05));
+    const pr = PROFILES[p.profile];
+    add(hint(pr.hint + '.'));
+    if (pr.crown) add(slider('crown', pr.crown, 0, 1, 0.05, '', 2));
+    if (pr.edge) add(slider('edge', 'Kantenrundung', 0, 1, 0.05));
   } else if (cur.seg === 'surface') {
     add(chips('pattern', 'Struktur', PATTERNS));
     const pt = PATTERNS[p.pattern];
     if (p.pattern !== 'none' && !pt.noDepth) add(slider('patternDepth', p.pattern === 'milgrain' ? 'Korngröße' : 'Tiefe', 0.05, 0.6, 0.01, 'mm', 2));
-    if (pt.count) add(slider('patternCount', pt.count, p.pattern === 'facets' ? 2 : 1, p.pattern === 'facets' ? 20 : 6, 1, '', 0, p.pattern === 'facets' ? (v) => (v + 4) + ' Flächen' : null));
+    if (pt.count) add(slider('patternCount', pt.count, 1, 6, 1, '', 0));
     if (pt.scale) add(slider('patternScale', 'Dichte', 0.5, 2.2, 0.05, '', 2));
-    if (p.form === 'signet' || p.form === 'bombe') add(h('p', { class: 'note' }, 'Am Kopf läuft die Struktur aus – die Fläche bleibt glatt.'));
+    if (p.pattern !== 'none' && !pt.noZone) add(chips('patternZone', 'Bereich', ZONES));
+    if (head) add(note('Am Kopf läuft die Struktur aus – die Fläche bleibt glatt.'));
   } else if (cur.seg === 'text') {
     add(textField('textOuter', 'Außen', 'z. B. CARPE DIEM'));
     add(textField('textInner', 'Innen', 'z. B. Name und Datum'));
@@ -252,13 +286,24 @@ function renderControls() {
         add(h('label', { class: 'switch' }, h('span', {}, 'Außen erhaben prägen statt vertiefen'),
           h('input', { type: 'checkbox', id: 'f-raised', checked: p.textRaised, onchange: (e) => { p.textRaised = e.target.checked; changed(); } })));
       }
-      if (p.textInner) add(h('p', { class: 'note' }, 'Die Innengravur liegt oben im Ring. Unter „Material“ die Deckkraft senken, dann scheint sie durch.'));
-    } else add(h('p', { class: 'hint' }, 'Text wird als echte Vertiefung in den Ring gearbeitet und ist damit auch im 3D-Druck vorhanden.'));
+      if (p.textInner) add(note('Die Innengravur liegt oben im Ring. Unter „Material“ die Deckkraft senken, dann scheint sie durch.'));
+    } else add(hint('Text wird als echte Vertiefung in den Ring gearbeitet und ist damit auch im 3D-Druck vorhanden.'));
   } else if (cur.seg === 'material') {
-    add(chips('material', 'Werkstoff', MATERIALS, { icon: (k) => h('span', { class: 'swatch', style: `background:${hex(MATERIALS[k].color)}` }) }));
-    add(chips('finish', 'Oberfläche', FINISHES));
+    const keys = Object.keys(MATERIALS);
+    add(h('span', { class: 'label' }, 'Werkstoff'));
+    for (const g of MATERIAL_GROUPS) {
+      add(h('div', { class: 'group-label' }, g), chips('material', '', matOptions(keys.filter((k) => MATERIALS[k].group === g)), { icon: matChip }));
+    }
+    add(divider(), chips('finish', 'Oberfläche', FINISHES));
     add(slider('opacity', 'Deckkraft', 0.15, 1, 0.05, '', 2));
-    add(h('p', { class: 'hint' }, 'Das Material bestimmt Aussehen und Gewichtsangabe. Die exportierte Druckdatei ist materialneutral.'));
+    const inl = Object.fromEntries(Object.entries(INLAYS).filter(([, v]) => !v.needsHead || head));
+    add(divider(), chips('inlay', 'Zweites Metall', inl));
+    if (p.inlay !== 'none') {
+      add(chips('material2', 'Zweitmetall', matOptions(keys.filter((k) => MATERIALS[k].metal)), { icon: matChip }));
+      if (p.inlay === 'center' || p.inlay === 'edges') add(slider('inlayWidth', 'Breite des Streifens', 0.1, 0.9, 0.05, '', 2));
+      add(hint('Die Gewichtsangabe rechnet mit dem Hauptwerkstoff.'));
+    }
+    add(hint('Das Material bestimmt Aussehen und Gewichtsangabe. Die exportierte Druckdatei ist materialneutral.'));
   }
   $('#controls').replaceChildren(...out);
 }
@@ -317,6 +362,13 @@ function exportSheet(name, params) {
 }
 
 // ============================================================== Galerie
+function formName(raw) {
+  const p = normalize(raw);
+  const parts = [FORMS[p.form].label];
+  if (p.closure !== 'closed') parts.push(CLOSURES[p.closure].label);
+  if (p.path !== 'straight') parts.push(PATHS[p.path].label);
+  return parts.join(', ');
+}
 function metaLine(p) {
   return `Gr. ${fmt(p.size, 0)} · ${fmt(p.width)} mm · ${MATERIALS[p.material]?.label || ''}`;
 }
@@ -338,7 +390,7 @@ function renderGallery() {
     h('span', { class: 'card-body' }, h('span', { class: 'card-title', style: 'display:block' }, r.name), h('span', { class: 'card-meta', style: 'display:block' }, metaLine(r.params))))));
 }
 function ringSheet(r) {
-  sheet(h('h2', {}, r.name), h('p', {}, metaLine(r.params) + ' · ' + FORMS[r.params.form].label),
+  sheet(h('h2', {}, r.name), h('p', {}, metaLine(r.params) + ' · ' + formName(r.params)),
     h('div', { class: 'actions' },
       action('Bearbeiten', () => guard(() => { loadIntoBench({ id: r.id, name: r.name, params: r.params }); go('bench'); })),
       action('Zum Stapel hinzufügen', () => { db.stack.push({ id: r.id, flip: false }); persist(); toast('Zum Stapel hinzugefügt'); }, 'ghost'),
