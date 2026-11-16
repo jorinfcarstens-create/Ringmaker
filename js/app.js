@@ -143,6 +143,8 @@ function renderStats() {
     (s.stones && s.stones.length ? ` · ${s.stones.length} ${s.stones.length === 1 ? 'Stein' : 'Steine'}` : '') +
     (thin ? `<br><span class="warn">Dünnste Stelle ${fmt(s.minWall, 2)} mm</span>` : '');
   updateInsets();
+  const sl = $('#stone-list');
+  if (sl) sl.textContent = stoneList();
   const facts = $('#facts');
   if (facts) facts.replaceWith(factsBlock());
 }
@@ -248,6 +250,12 @@ function stoneName(p) {
   const size = ['round', 'square', 'cushion'].includes(p.stoneShape) ? `${fmt(p.stoneL, p.stoneL % 1 ? 1 : 0)} mm` : `${fmt(p.stoneL, p.stoneL % 1 ? 1 : 0)} × ${fmt(p.stoneW, p.stoneW % 1 ? 1 : 0)} mm`;
   return `${STONE_SHAPES[p.stoneShape].label} ${size}, ${STONE_CUTS[p.stoneCut].label.toLowerCase()}, ${STONE_COLORS[p.stoneColor].label}`;
 }
+function stoneList() {
+  const p = cur.params, n = cur.stats?.stones?.length || 0;
+  if (!n) return 'Einkaufsliste: –';
+  const small = p.stones === 'trio' ? ` (Mitte) und 2 kleinere mit etwa ${fmt(p.stoneL * 0.62)} mm` : '';
+  return `Einkaufsliste: ${p.stones === 'trio' ? 1 : n} × ${stoneName(p)}${small}.`;
+}
 const matChip = (k) => h('span', { class: 'swatch', style: `background:${hex(MATERIALS[k].color)}` });
 const matOptions = (keys) => Object.fromEntries(keys.map((k) => [k, MATERIALS[k].label + (MATERIALS[k].note ? ' ' + MATERIALS[k].note : '')]));
 
@@ -307,11 +315,7 @@ function renderControls() {
       if (p.setting !== 'flush') add(slider('collar', 'Höhe über der Schiene', 0, 4.5, 0.1));
       if (p.setting === 'cone') add(slider('shoulder', 'Auslauf', 0.5, 9, 0.1));
       add(slider('wall', 'Wandstärke', 0.4, 1.8, 0.05, 'mm', 2), slider('clearance', 'Spiel zum Stein', 0, 0.3, 0.01, 'mm', 2));
-      const n = cur.stats?.stones?.length || 0;
-      if (n) {
-        const small = p.stones === 'trio' ? ` (Mitte) und 2 kleinere mit etwa ${fmt(p.stoneL * 0.62)} mm` : '';
-        add(note(`Einkaufsliste: ${p.stones === 'trio' ? 1 : n} × ${stoneName(p)}${small}.`));
-      }
+      add(h('p', { class: 'note', id: 'stone-list' }, stoneList()));
       add(hint('Das Spiel gleicht Maßabweichungen der Steine (etwa ±0,1 mm) und des Drucks aus. Zum Kleben eignet sich Zweikomponenten-Epoxid oder UV-Kleber.'));
     }
   } else if (cur.seg === 'size') {
