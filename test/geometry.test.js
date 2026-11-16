@@ -25,6 +25,20 @@ function check(label, p, quality) {
     const a = Math.floor(key / nv), b = key % nv;
     if (c !== 1 || edges.get(b * nv + a) !== 1) { errs.push('nicht geschlossen'); break; }
   }
+  // Fassungen: eigene Körper; Kanten sind doppelt angelegt, daher nach Position verschweißen
+  for (const e of m.extras) {
+    const id = new Map(), key = (i) => { const k = [0, 1, 2].map((c) => Math.round(e.positions[i * 3 + c] * 1e4)).join(','); if (!id.has(k)) id.set(k, id.size); return id.get(k); };
+    const ed = new Map();
+    for (let i = 0; i < e.indices.length; i += 3) for (let k = 0; k < 3; k++) {
+      const a = key(e.indices[i + k]), b = key(e.indices[i + (k + 1) % 3]);
+      if (a !== b) ed.set(a + '>' + b, (ed.get(a + '>' + b) || 0) + 1);
+    }
+    for (const [k, c] of ed) { const [a, b] = k.split('>'); if (c !== 1 || ed.get(b + '>' + a) !== 1) { errs.push('Fassung nicht geschlossen'); break; } }
+    let v = 0; const P = e.positions, I = e.indices;
+    for (let i = 0; i < I.length; i += 3) { const a = I[i] * 3, b = I[i + 1] * 3, c = I[i + 2] * 3; v += P[a] * (P[b + 1] * P[c + 2] - P[b + 2] * P[c + 1]) - P[a + 1] * (P[b] * P[c + 2] - P[b + 2] * P[c]) + P[a + 2] * (P[b] * P[c + 1] - P[b + 1] * P[c]); }
+    if (!(v > 0)) errs.push('Fassung Volumen ' + v);
+    for (const x of P) if (!Number.isFinite(x)) { errs.push('Fassung NaN'); break; }
+  }
   if (!(stats.volume > 5)) errs.push('Volumen ' + stats.volume);
   if (!(stats.minWall > 0.03)) errs.push('Wand ' + stats.minWall);
   if (errs.length) { fails++; console.log('FAIL', label, errs.join(', ')); }

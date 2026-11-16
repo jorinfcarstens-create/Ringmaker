@@ -98,6 +98,13 @@ export function ringObject(params, quality) {
   }
   geo.computeVertexNormals();
   const mesh = new THREE.Mesh(geo, makeMaterial(p, !!built.zone));
+  for (const e of built.extras) { // Fassungen: eigene Körper mit klaren Kanten
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(e.positions, 3));
+    g.setIndex(new THREE.BufferAttribute(e.indices, 1));
+    g.computeVertexNormals();
+    mesh.add(new THREE.Mesh(g, built.zone ? makeMaterial(p, false) : mesh.material));
+  }
   for (const st of built.stones) {
     const gem = new THREE.Mesh(gemGeometry(p.stoneShape, st.hu, st.hv, p.stoneTurn, p.stoneCut), gemMaterial(p.stoneColor, p.stoneCut));
     gem.position.set(...st.pos);
@@ -228,7 +235,9 @@ export class Viewer {
     this.wake();
   }
 
-  _dispose(m) { m.geometry.dispose(); m.material.dispose(); }
+  _dispose(m) {
+    m.traverse((o) => { if (o.isMesh && !o.userData.shared) { o.geometry.dispose(); o.material.dispose(); } });
+  }
   _clear() {
     for (const m of this.meshes) { this.group.remove(m); this._dispose(m); }
     this.meshes = [];

@@ -112,17 +112,22 @@ export function parseImport(text) {
 // (Achse senkrecht), die Unterkante bei Z = 0.
 export function stlFile(name, params) {
   const p = normalize(params);
-  const { positions: pos, indices: idx } = buildRing(p, { quality: 'export', maps: textMaps(p) });
-  let zMin = Infinity;
-  for (let i = 2; i < pos.length; i += 3) if (pos[i] < zMin) zMin = pos[i];
-  const nTri = idx.length / 3;
+  const built = buildRing(p, { quality: 'export', maps: textMaps(p) });
+  // Ring und Fassungen sind je ein geschlossener Körper; sie überlappen
+  // sich und werden vom Slicer zu einem Teil vereinigt.
+  const parts = [built, ...built.extras];
+  let zMin = Infinity, nTri = 0;
+  for (const { positions: pos, indices: idx } of parts) {
+    for (let i = 2; i < pos.length; i += 3) if (pos[i] < zMin) zMin = pos[i];
+    nTri += idx.length / 3;
+  }
   const buf = new ArrayBuffer(84 + nTri * 50);
   const dv = new DataView(buf);
   const header = 'Ringmaker STL (mm)';
   for (let i = 0; i < header.length; i++) dv.setUint8(i, header.charCodeAt(i));
   dv.setUint32(80, nTri, true);
   let o = 84;
-  for (let t = 0; t < idx.length; t += 3) {
+  for (const { positions: pos, indices: idx } of parts) for (let t = 0; t < idx.length; t += 3) {
     const a = idx[t] * 3, b = idx[t + 1] * 3, c = idx[t + 2] * 3;
     const ax = pos[a], ay = pos[a + 1], az = pos[a + 2] - zMin;
     const bx = pos[b], by = pos[b + 1], bz = pos[b + 2] - zMin;

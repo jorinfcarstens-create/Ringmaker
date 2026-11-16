@@ -145,6 +145,8 @@ function renderStats() {
   updateInsets();
   const sl = $('#stone-list');
   if (sl) sl.textContent = stoneList();
+  const thinEl = $('#stone-thin');
+  if (thinEl) thinEl.hidden = !(s.stones || []).some((x) => x.thin);
   const facts = $('#facts');
   if (facts) facts.replaceWith(factsBlock());
 }
@@ -313,8 +315,9 @@ function renderControls() {
       if (p.stones !== 'solo') add(slider('stoneGap', 'Abstand zwischen den Steinen', 0, 4, 0.1));
       add(divider(), chips('setting', 'Fassung', SETTINGS), hint(SETTINGS[p.setting].hint + '.'));
       if (p.setting !== 'flush') add(slider('collar', 'Höhe über der Schiene', 0, 4.5, 0.1));
-      if (p.setting === 'cone') add(slider('shoulder', 'Auslauf', 0.5, 9, 0.1));
+      if (p.setting === 'cone') add(slider('taper', 'Verjüngung nach unten', 0, 0.6, 0.02, '', 2));
       add(slider('wall', 'Wandstärke', 0.4, 1.8, 0.05, 'mm', 2), slider('clearance', 'Spiel zum Stein', 0, 0.3, 0.01, 'mm', 2));
+      add(h('p', { class: 'note warn', id: 'stone-thin', hidden: true }, 'Die Schiene ist an dieser Stelle zu dünn für den Stein – er würde überstehen. Mehr Stärke geben, einen Aufbau mit Kopf wählen oder die Fassung „Zarge“ nehmen.'));
       add(h('p', { class: 'note', id: 'stone-list' }, stoneList()));
       add(hint('Das Spiel gleicht Maßabweichungen der Steine (etwa ±0,1 mm) und des Drucks aus. Zum Kleben eignet sich Zweikomponenten-Epoxid oder UV-Kleber.'));
     }

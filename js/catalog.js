@@ -130,7 +130,8 @@ export const STONE_LAYOUTS = {
   around: { label: 'Rundum' },
 };
 export const SETTINGS = {
-  flush: { label: 'Eingelassen', hint: 'Der Sitz ist in den Ring versenkt. Reicht die Materialstärke nicht, hebt sich die Stelle automatisch etwas an' },
-  bezel: { label: 'Zarge', hint: 'Ein aufgesetzter Rand mit senkrechter Wand umschließt den Stein' },
-  cone: { label: 'Kelch', hint: 'Die Fassung wächst in weichem Schwung aus der Schiene – bei großen Steinen prägt sie die ganze Ringform' },
+  flush: { label: 'Eingelassen', hint: 'Der Sitz ist in den Ring versenkt. Braucht genug Materialstärke – am besten ein breites, starkes Band oder ein Aufbau mit Kopf' },
+  bezel: { label: 'Zarge', hint: 'Ein Becher mit senkrechter Wand sitzt auf dem Ring und umschließt den Stein' },
+  cone: { label: 'Kelch', hint: 'Ein Becher, der sich nach unten verjüngt. Für fließende Schultern den Aufbau „Verlauf“ dazu wählen' },
 };
+

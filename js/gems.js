@@ -1,6 +1,7 @@
 // Glassteine für die Darstellung. Die Druckdatei enthält nur die Sitze.
 import * as THREE from 'three';
-import { stoneRho } from './ring.js';
+import { stoneOutline } from './ring.js';
+export { stoneOutline };
 
 export const STONE_COLORS = {
   crystal: { label: 'Kristall', color: 0xffffff },
@@ -18,17 +19,6 @@ export const STONE_COLORS = {
   opal: { label: 'Opalweiß', color: 0xf3f0ea, opaque: true },
   turquoise: { label: 'Türkis', color: 0x2fc4b2, opaque: true },
 };
-
-// Umriss der Rundiste; x = quer zum Finger, z = längs
-export function stoneOutline(shape, hu, hv, turn, n) {
-  const pts = [];
-  for (let i = 0; i < n; i++) {
-    const th = (i / n) * Math.PI * 2, cu = Math.cos(th), cv = Math.sin(th);
-    const k = turn ? stoneRho(shape, cu, cv, hu, hv) : stoneRho(shape, cv, cu, hv, hu);
-    pts.push([cu / k, cv / k]);
-  }
-  return pts;
-}
 
 const cache = new Map();
 export function gemGeometry(shape, hu, hv, turn, cut) {

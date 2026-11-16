@@ -137,7 +137,7 @@ export const STYLES = [
     id: 'cabochon', era: 'mittelalter', title: 'Der Cabochon', when: 'vorherrschend bis ins 14. Jh.',
     stand: 'Kirche, Hochadel, reiche Kaufleute',
     lead: 'Nicht facettiert, sondern rund gewölbt und poliert – so wurden Steine geschliffen, bevor man Facetten schleifen konnte.',
-    preset: { form: 'band', profile: 'd', width: 3, thickness: 1.7, stones: 'solo', stoneShape: 'oval', stoneL: 14, stoneW: 10, stoneCut: 'cab', stoneColor: 'sapphire', setting: 'cone', collar: 1.2, shoulder: 3.5, material: 'gold' },
+    preset: { form: 'taper', taperWidth: 6, taperThickness: 2.6, profile: 'd', width: 3, thickness: 1.7, stones: 'solo', stoneShape: 'oval', stoneL: 14, stoneW: 10, stoneCut: 'cab', stoneColor: 'sapphire', setting: 'cone', collar: 1.6, taper: 0.3, material: 'gold' },
     sections: [
       ['Herkunft', 'Bis ins späte Mittelalter wurden Edelsteine nur gerundet und poliert; der Facettenschliff verbreitete sich in Europa erst ab dem 14. und 15. Jahrhundert. Der Name kommt vom französischen „caboche“, Kopf. Kronen, Reliquiare und Bischofsringe der Romanik und Gotik tragen Cabochons in hohen Fassungen.'],
       ['Warum diese Form', 'Die glatte Wölbung holt die Farbe aus dem Stein, nicht das Funkeln. Sie folgt der Form des Rohsteins und verschwendet wenig Material. Die flache Unterseite lässt sich gut fassen – und heute gut kleben.'],
@@ -298,7 +298,7 @@ export const STYLES = [
       ['Herkunft', 'Im späten 19. Jahrhundert kamen massive Ringe in Mode, in die ein Stein bündig eingelassen wurde. Der Goldschmied bohrt einen Sitz, setzt den Stein ein und reibt das umgebende Metall über dessen Rand – daher der Name Einreibefassung.'],
       ['Warum diese Form', 'Die Fassung ist die robusteste überhaupt: Der Stein ist rundum vom Ring geschützt. Sie braucht aber Material – der Ring muss an der Stelle dicker sein als der Stein tief ist. Typisch sind Siegel- und Bandringe mit einem einzelnen Stein.'],
       ['Stand und Bedeutung', 'Der eingelassene Stein war der Schmuck des arbeitenden Bürgers: unauffällig, alltagstauglich, männlich konnotiert. Ein kleiner Diamant im schweren Goldring zeigte Wohlstand ohne Prunk.'],
-      ['Heute', 'Heute bei Trauringen sehr verbreitet. In der Werkbank: Fassung „Eingelassen“. Ist die Schiene zu dünn für den Stein, hebt sich die Stelle automatisch an – oder man wählt einen Aufbau mit Kopf.'],
+      ['Heute', 'Heute bei Trauringen sehr verbreitet. In der Werkbank: Fassung „Eingelassen“. Ist die Schiene zu dünn für den Stein, weist die App darauf hin – dann mehr Stärke geben oder einen Aufbau mit Kopf wählen.'],
     ],
   },
   {
