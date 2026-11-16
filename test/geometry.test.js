@@ -3,8 +3,8 @@
 import { buildRing, DEFAULTS } from '../js/ring.js';
 
 const forms = ['band', 'taper', 'signet', 'bombe', 'wave', 'vee'];
-const profiles = ['flat', 'd', 'comfort', 'round', 'knife', 'bevel', 'concave', 'lens', 'cushion', 'step', 'channel', 'bead', 'double', 'triple', 'slant'];
-const patterns = ['none', 'grooves', 'flutes', 'milgrain', 'hammered', 'rope', 'knurl', 'facets', 'beads', 'ribs', 'diagonal', 'waves', 'bark', 'dots', 'pyramids', 'scales'];
+const profiles = ['flat', 'd', 'comfort', 'round', 'knife', 'bevel', 'concave', 'lens', 'cushion', 'step', 'channel', 'bead', 'double', 'triple', 'slant', 'rimmed'];
+const patterns = ['none', 'grooves', 'flutes', 'milgrain', 'hammered', 'rope', 'knurl', 'facets', 'beads', 'ribs', 'diagonal', 'waves', 'bark', 'dots', 'pyramids', 'scales', 'meander', 'fret', 'steps'];
 let fails = 0, count = 0;
 
 function check(label, p, quality) {

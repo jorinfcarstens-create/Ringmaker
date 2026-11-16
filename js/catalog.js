@@ -69,6 +69,7 @@ export const PROFILES = {
   step: { label: 'Stufe', hint: 'Erhöhte Mittelbahn mit niedrigen Schultern', crown: 'Breite der Stufe', edge: true },
   bead: { label: 'Mittelwulst', hint: 'Flaches Band mit halbrundem Wulst in der Mitte', crown: 'Breite des Wulstes', edge: true },
   double: { label: 'Doppelwulst', hint: 'Zwei Wülste nebeneinander – wie zwei verbundene Reife', crown: 'Tiefe der Kehle' },
+  rimmed: { label: 'Randwülste', hint: 'Großer Wulst in der Mitte, kleine Wülste an beiden Rändern', crown: 'Breite der Randwülste' },
   triple: { label: 'Dreiwulst', hint: 'Drei Wülste – wie ein Bündel aus drei Drähten', crown: 'Tiefe der Kehlen' },
 };
 
@@ -79,6 +80,9 @@ export const PATTERNS = {
   ribs: { label: 'Rippen', scale: true },
   diagonal: { label: 'Schrägrillen', scale: true },
   waves: { label: 'Guilloche', scale: true },
+  meander: { label: 'Mäander', scale: true, noZone: true },
+  fret: { label: 'Stufenmäander', scale: true, noZone: true },
+  steps: { label: 'Stufenband', scale: true, noZone: true },
   milgrain: { label: 'Perlrand', noZone: true },
   hammered: { label: 'Gehämmert', scale: true },
   bark: { label: 'Rinde', scale: true },

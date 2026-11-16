@@ -7,6 +7,7 @@
 export const ERAS = [
   { id: 'antike', label: 'Antike', span: 'bis ca. 500 n. Chr.' },
   { id: 'mittelalter', label: 'Mittelalter & Renaissance', span: 'ca. 500 – 1650' },
+  { id: 'amerika', label: 'Altes Amerika', span: 'bis ca. 1530' },
   { id: 'neuzeit', label: 'Bürgerliches Zeitalter', span: 'ca. 1650 – 1900' },
   { id: 'moderne', label: 'Moderne', span: 'ab 1900' },
 ];
@@ -97,6 +98,18 @@ export const STYLES = [
     ],
   },
   {
+    id: 'maeander', era: 'antike', title: 'Der Mäander', when: 'Griechenland, ab ca. 900 v. Chr.',
+    stand: 'Ornament aller Schichten · im Klassizismus Zeichen von Bildung',
+    lead: 'Eine Linie, die sich rechtwinklig einrollt und weiterläuft – das bekannteste Bandornament der Antike.',
+    preset: { form: 'band', profile: 'flat', crown: 0.1, edge: 0.25, width: 7, thickness: 1.8, pattern: 'meander', patternDepth: 0.28, patternScale: 1, material: 'gold', finish: 'polished' },
+    sections: [
+      ['Herkunft', 'Der Mäander prägt die griechische Keramik der geometrischen Zeit und bleibt über die gesamte Antike das Rahmenornament schlechthin – auf Vasen, Gewändern, Tempelgebälken und Schmuck. Seinen Namen hat er vom gewundenen Fluss Maiandros in Kleinasien.'],
+      ['Warum diese Form', 'Das Muster entsteht aus einer einzigen, nie abreißenden Linie. Es lässt sich in jede Bandbreite einpassen und läuft ohne Anfang und Ende um einen Ring. Gedeutet wurde es als Bild für das Ewige, für Wasser und für den Lauf des Lebens.'],
+      ['Stand und Bedeutung', 'In der Antike war der Mäander Allgemeingut. Um 1800 wurde er mit Klassizismus und Empire zum Bekenntnis: Wer ihn trug, zeigte Bildung und Sinn für das antike Ideal.'],
+      ['Heute', 'Der Mäander-Bandring ist ein Dauerbrenner, besonders im Mittelmeerraum. In der Werkbank unter „Struktur“: Mäander; die Dichte bestimmt die Höhe des Bandes.'],
+    ],
+  },
+  {
     id: 'steigbuegel', era: 'mittelalter', title: 'Der Steigbügelring', when: 'ca. 1150 – 1400',
     stand: 'Bischöfe, Adel, wohlhabende Bürger',
     lead: 'Die Schiene steigt wie ein gotischer Bogen zu einer Spitze auf – benannt nach der Form des Steigbügels.',
@@ -142,6 +155,30 @@ export const STYLES = [
       ['Warum diese Form', 'Die Form folgt dem Zählen: Die Erhebungen müssen mit dem Daumen blind zu ertasten sein. Der Ring ersetzt die Perlenschnur dort, wo sie stört oder auffällt – bei der Arbeit, auf Reisen, im Feld.'],
       ['Stand und Bedeutung', 'Getragen wurde er von frommen Laien aller Stände. Besondere Bedeutung bekam er dort, wo katholische Frömmigkeit verboten war, etwa in England und Irland zur Zeit der Strafgesetze: Ein Ring ließ sich verbergen, eine Gebetskette nicht.'],
       ['Heute', 'Rosenkranzringe werden bis heute gefertigt. Die Vorlage zeigt die Idee vereinfacht als Zehneck – zehn ertastbare Kanten. Als reines Formspiel ist der vieleckige Ring auch ohne religiösen Bezug reizvoll.'],
+    ],
+  },
+  {
+    id: 'stufenmaeander', era: 'amerika', title: 'Der Stufenmäander', when: 'Mesoamerika, ca. 900 – 1521',
+    stand: 'Adel und Priesterschaft der Mixteken und Azteken',
+    lead: 'Eine Treppe, die in einem eckigen Haken endet: das Leitornament des alten Mexiko.',
+    preset: { form: 'band', profile: 'flat', crown: 0.1, edge: 0.25, width: 8, thickness: 1.9, pattern: 'fret', patternDepth: 0.3, patternScale: 1, material: 'gold999', finish: 'polished' },
+    sections: [
+      ['Herkunft', 'Der Stufenmäander – auf Nahuatl Xicalcoliuhqui – findet sich in ganz Mesoamerika: als Steinmosaik an den Palästen von Mitla in Oaxaca, auf Keramik, Textilien und Federschilden. Die Goldschmiede der Mixteken beherrschten den Guss in verlorener Form meisterhaft; aus dem Grab 7 von Monte Albán stammen fein gegossene Goldringe.'],
+      ['Warum diese Form', 'Das Motiv verbindet Treppe und Spirale. Seine Bedeutung ist nicht eindeutig überliefert; gedeutet wird es als Welle, Schlange, Blitz oder aufgeschnittene Meeresschnecke. Formal lässt es sich wie der europäische Mäander endlos reihen und füllt ein Band ohne Lücke.'],
+      ['Stand und Bedeutung', 'Gold war im Aztekenreich kein Zahlungsmittel, sondern den Göttern, dem Herrscher und dem Adel vorbehalten; Goldschmiede bildeten einen angesehenen eigenen Stand. Schmuck zeigte Rang – wer was tragen durfte, war geregelt.'],
+      ['Heute', 'Stufenmäander prägen bis heute mexikanisches Silber, vor allem aus Taxco. Die Vorlage zeigt das Motiv vereinfacht als vertieftes Band. Schön dazu: das Profil „Randwülste“ oder „Randprofil“ als Rahmen.'],
+    ],
+  },
+  {
+    id: 'stufenband', era: 'amerika', title: 'Das Stufenband der Anden', when: 'Anden, ca. 500 – 1532',
+    stand: 'Herrscher, Adel und Kult bei Tiwanaku, Chimú und Inka',
+    lead: 'Getreppte Linien, die auf- und absteigen wie Terrassen am Berghang.',
+    preset: { form: 'band', profile: 'channel', crown: 0.35, edge: 0.3, width: 8, thickness: 2, pattern: 'steps', patternDepth: 0.28, patternScale: 1, material: 'silver', finish: 'polished' },
+    sections: [
+      ['Herkunft', 'Stufenmotive durchziehen die Kunst der Anden: am Sonnentor von Tiwanaku, auf Textilien der Wari, an den Lehmwänden von Chan Chan, in der Architektur der Inka. Metall wurde gehämmert, getrieben und gegossen; die Küstenkulturen der Moche und Chimú waren berühmt für ihre Gold- und Silberarbeiten.'],
+      ['Warum diese Form', 'Die Stufe ist die Grundform der andinen Welt: Terrassenfelder, Tempelplattformen, der gestufte Berg. Im Ornament wird daraus ein Band, das sich aus dem rechtwinkligen Raster der Webkunst ergibt – viele Metallmuster folgen Textilvorbildern.'],
+      ['Stand und Bedeutung', 'Gold galt den Inka als Schweiß der Sonne, Silber als Tränen des Mondes. Beides gehörte dem Herrscher und dem Kult; getragen wurde es von Adel und Würdenträgern, nicht vom einfachen Volk.'],
+      ['Heute', 'Das Stufenband wirkt heute vor allem grafisch: streng, rhythmisch, gut kombinierbar mit kantigen Profilen. In Silber mit geschwärzten Vertiefungen kommt es besonders klar heraus.'],
     ],
   },
   {

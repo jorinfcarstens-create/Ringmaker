@@ -209,6 +209,13 @@ export function profileAt(type, x, w, t, crown, edge, out = _po) {
       i = cornerDrop(ax, w, Math.min(ri, t * (1 - dep) * 0.8));
       break;
     }
+    case 'rimmed': {       // großer Mittelwulst, kleine Randwülste
+      const hw = w * (0.13 + 0.12 * crown), c = w - 2 * hw, hv = t * 0.3, hr = t * 0.62;
+      if (ax < c) o = hv + (t - hv) * Math.sqrt(Math.max(0, 1 - (ax / c) * (ax / c)));
+      else { const u = (ax - (w - hw)) / hw; o = hv + (hr - hv) * Math.sqrt(Math.max(0, 1 - u * u)); }
+      i = cornerDrop(ax, w, Math.min(ri, hv * 0.7));
+      break;
+    }
     case 'slant': {        // Pultprofil: eine Seite hoch, eine niedrig
       const lo = t * (1 - 0.65 * crown);
       o = lo + (t - lo) * (q + 1) / 2 - cornerDrop(ax, w, Math.min(rho, lo * 0.6));
@@ -406,7 +413,23 @@ function sampleMap(map, u, v) {
     (d[y1 * w + x0] * (1 - fx) + d[y1 * w + x1] * fx) * fy) / 255;
 }
 
-const FINE = ['milgrain', 'hammered', 'rope', 'knurl', 'dots', 'pyramids', 'bark', 'scales', 'ribs', 'waves', 'diagonal'];
+// Ornamentbänder als kleine Kacheln ('#' = vertiefte Linie), endlos wiederholt.
+const MOTIFS = {
+  meander: ['..######', '..#....#', '..#.##.#', '..#..#.#', '..####.#', '.......#', '########'],
+  fret: ['####......', '#..#......', '#.##....#.', '#......##.', '#.....###.', '#....####.', '##########'],
+  steps: ['...####...', '...#..#...', '.###..###.', '.#......#.', '##......##'],
+};
+for (const k in MOTIFS) MOTIFS[k] = { rows: MOTIFS[k].length, cols: MOTIFS[k][0].length, bits: MOTIFS[k].map((r) => [...r].map((c) => (c === '#' ? 1 : 0))) };
+function motif(m, u, v) { // u in Kachelbreiten (endlos), v in 0..1 über die Bandhöhe
+  if (v < 0 || v > 1) return 0;
+  const fx = (u - Math.floor(u)) * m.cols - 0.5, fy = v * m.rows - 0.5;
+  const x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0;
+  const at = (x, y) => (y < 0 || y >= m.rows ? 0 : m.bits[y][((x % m.cols) + m.cols) % m.cols]);
+  const val = (at(x0, y0) * (1 - tx) + at(x0 + 1, y0) * tx) * (1 - ty) + (at(x0, y0 + 1) * (1 - tx) + at(x0 + 1, y0 + 1) * tx) * ty;
+  return sm((val - 0.5) * 2.2 + 0.5);
+}
+
+const FINE = ['meander', 'fret', 'steps', 'milgrain', 'hammered', 'rope', 'knurl', 'dots', 'pyramids', 'bark', 'scales', 'ribs', 'waves', 'diagonal'];
 export function needsDetail(p) {
   return FINE.includes(p.pattern) || p.twist > 0 || p.contour !== 'none' ||
     !!(p.textOuter || p.textInner || (p.textTable && p.form === 'signet'));
@@ -449,6 +472,12 @@ export function buildRing(p0, opts = {}) {
   const dotN = around(1.5), pyrN = around(1.6), scaleN = around(2.0), diagN = around(1.6), waveN = Math.max(3, Math.round(around(5) / 1));
   const beadN = Math.max(8, Math.round(Cout / (Math.max(p.width, 1.6) * 1.05 / sc)));
   const barkN = around(0.9);
+  const mot = MOTIFS[pat];
+  let motN = 0, motH = 0;
+  if (mot) {
+    motH = Math.min(p.width * 0.78, p.width * 0.62 / Math.sqrt(sc) + 0.4);
+    motN = Math.max(3, Math.round(Cout / (motH / mot.rows * mot.cols)));
+  }
   const mgR = Math.min(Math.max(0.22, pd * 1.2), wb * 0.4);
   const mgN = Math.max(12, Math.round(Cout / (2 * mgR)));
   const grooveG = Math.max(0.16, pd * 0.8);
@@ -573,6 +602,7 @@ export function buildRing(p0, opts = {}) {
             }
             break;
           }
+          case 'meander': case 'fret': case 'steps': dsp = -pd * motif(mot, uu * motN, 0.5 - x / motH); break;
           case 'flutes': dsp = -pd * (0.5 - 0.5 * Math.cos(fluteN * theta)); break;
           case 'ribs': dsp = -pd * tri(ribN * uu); break;
           case 'diagonal': dsp = -pd * Math.pow(0.5 + 0.5 * Math.cos(diagN * theta + x * 2.4 * sc), 3); break;
